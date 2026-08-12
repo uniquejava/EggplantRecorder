@@ -1,0 +1,183 @@
+import AppKit
+import Combine
+import Foundation
+
+enum AppPhase {
+    case idle
+    case configuring
+    case recording
+}
+
+@MainActor
+final class AppState: ObservableObject {
+    static let shared = AppState()
+
+    @Published var phase: AppPhase = .idle
+    @Published var isPaused = false
+    @Published var elapsedSeconds: TimeInterval = 0
+    @Published var optionsMode: RecordingKind = .screen
+    @Published var lastErrorMessage: String?
+    @Published var highlightPath: String?
+    @Published var recordings: [RecordingEntry] = []
+
+    let recorder = RecorderController()
+    let optionsBar = OptionsBarController()
+    let filesList = FilesListController()
+    let statusItem = StatusItemController()
+
+    private var elapsedTimer: Timer?
+    private var recordingAnchor = Date()
+    private var pausedAccumulated: TimeInterval = 0
+    private var pauseBeganAt: Date?
+
+    private var cancellables = Set<AnyCancellable>()
+
+    private init() {
+        recorder.objectWillChange
+            .sink { [weak self] _ in
+                self?.objectWillChange.send()
+            }
+            .store(in: &cancellables)
+    }
+
+    func bootstrap() {
+        statusItem.install(appState: self)
+        optionsBar.configure(appState: self)
+        filesList.configure(appState: self)
+        Task { await refreshRecordings() }
+    }
+
+    func showOptions(mode: RecordingKind) {
+        guard phase != .recording else { return }
+        optionsMode = mode
+        phase = .configuring
+        optionsBar.show(mode: mode)
+    }
+
+    func hideOptions() {
+        optionsBar.hide()
+        if phase == .configuring {
+            phase = .idle
+        }
+    }
+
+    func startRecording(config: RecordingConfig) async {
+        lastErrorMessage = nil
+        do {
+            try RecordingsLibrary.ensureDirectory()
+            let output = RecordingsLibrary.makeOutputURL(kind: config.kind)
+            try await recorder.start(config: config, outputURL: output)
+            optionsBar.hide()
+            phase = .recording
+            isPaused = false
+            elapsedSeconds = 0
+            recordingAnchor = Date()
+            pausedAccumulated = 0
+            pauseBeganAt = nil
+            startElapsedTimer()
+            statusItem.enterRecordingMode()
+        } catch {
+            lastErrorMessage = error.localizedDescription
+            optionsBar.showError(error.localizedDescription)
+        }
+    }
+
+    func togglePause() {
+        guard phase == .recording else { return }
+        if isPaused {
+            recorder.resume()
+            if let began = pauseBeganAt {
+                pausedAccumulated += Date().timeIntervalSince(began)
+            }
+            pauseBeganAt = nil
+            isPaused = false
+        } else {
+            recorder.pause()
+            pauseBeganAt = Date()
+            isPaused = true
+        }
+        statusItem.refreshRecordingControls()
+    }
+
+    func stopRecording() async {
+        guard phase == .recording else { return }
+        stopElapsedTimer()
+        do {
+            let path = try await recorder.stop()
+            phase = .idle
+            isPaused = false
+            statusItem.enterIdleMode()
+            highlightPath = path
+            await refreshRecordings()
+            filesList.show(highlightPath: path)
+        } catch {
+            phase = .idle
+            isPaused = false
+            statusItem.enterIdleMode()
+            lastErrorMessage = error.localizedDescription
+            presentAlert(title: "Recording failed", message: error.localizedDescription)
+        }
+    }
+
+    func showFilesList() {
+        Task {
+            await refreshRecordings()
+            filesList.show(highlightPath: highlightPath)
+        }
+    }
+
+    func refreshRecordings() async {
+        recordings = await RecordingsLibrary.list()
+    }
+
+    func quit() {
+        if phase == .recording {
+            Task {
+                _ = try? await recorder.stop()
+                NSApp.terminate(nil)
+            }
+        } else {
+            NSApp.terminate(nil)
+        }
+    }
+
+    private func startElapsedTimer() {
+        stopElapsedTimer()
+        elapsedTimer = Timer.scheduledTimer(withTimeInterval: 0.25, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                self?.tickElapsed()
+            }
+        }
+        if let elapsedTimer {
+            RunLoop.main.add(elapsedTimer, forMode: .common)
+        }
+    }
+
+    private func stopElapsedTimer() {
+        elapsedTimer?.invalidate()
+        elapsedTimer = nil
+    }
+
+    private func tickElapsed() {
+        guard phase == .recording, !isPaused else { return }
+        let wall = Date().timeIntervalSince(recordingAnchor) - pausedAccumulated
+        elapsedSeconds = max(0, wall)
+        statusItem.refreshRecordingControls()
+    }
+
+    private func presentAlert(title: String, message: String) {
+        let alert = NSAlert()
+        alert.messageText = title
+        alert.informativeText = message
+        alert.alertStyle = .warning
+        alert.runModal()
+    }
+}
+
+struct RecordingConfig {
+    var kind: RecordingKind
+    var sourceID: String
+    var systemAudio: Bool
+    var microphone: Bool
+    var microphoneDeviceID: String?
+}
