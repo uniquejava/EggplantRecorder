@@ -44,7 +44,10 @@ final class CaptureSession: NSObject, SCStreamDelegate, SCStreamOutput {
         systemAudio: Bool,
         microphone: Bool,
         microphoneDeviceID: String?,
-        excludePID: pid_t
+        excludePID: pid_t,
+        areaSourceRect: CGRect? = nil,
+        areaPixelWidth: Int? = nil,
+        areaPixelHeight: Int? = nil
     ) async throws {
         if writing {
             throw CaptureError.alreadyRecording
@@ -62,7 +65,10 @@ final class CaptureSession: NSObject, SCStreamDelegate, SCStreamOutput {
             content: content,
             sourceID: sourceID,
             kind: kind,
-            excludePID: excludePID
+            excludePID: excludePID,
+            areaSourceRect: areaSourceRect,
+            areaPixelWidth: areaPixelWidth,
+            areaPixelHeight: areaPixelHeight
         )
 
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
@@ -72,6 +78,7 @@ final class CaptureSession: NSObject, SCStreamDelegate, SCStreamOutput {
                         filter: filterAndSize.filter,
                         width: filterAndSize.width,
                         height: filterAndSize.height,
+                        sourceRect: filterAndSize.sourceRect,
                         systemAudio: systemAudio,
                         microphone: microphone,
                         microphoneDeviceID: microphoneDeviceID,
@@ -123,6 +130,7 @@ final class CaptureSession: NSObject, SCStreamDelegate, SCStreamOutput {
         filter: SCContentFilter,
         width: Int,
         height: Int,
+        sourceRect: CGRect?,
         systemAudio: Bool,
         microphone: Bool,
         microphoneDeviceID: String?,
@@ -198,6 +206,10 @@ final class CaptureSession: NSObject, SCStreamDelegate, SCStreamOutput {
         let config = SCStreamConfiguration()
         config.width = width
         config.height = height
+        if let sourceRect, sourceRect.width > 0, sourceRect.height > 0 {
+            config.sourceRect = sourceRect
+            config.scalesToFit = false
+        }
         config.minimumFrameInterval = CMTime(value: 1, timescale: 30)
         config.queueDepth = 8
         config.pixelFormat = kCVPixelFormatType_32BGRA
@@ -383,16 +395,20 @@ final class CaptureSession: NSObject, SCStreamDelegate, SCStreamOutput {
         let filter: SCContentFilter
         let width: Int
         let height: Int
+        let sourceRect: CGRect?
     }
 
     private static func makeFilter(
         content: SCShareableContent,
         sourceID: String,
         kind: RecordingKind,
-        excludePID: pid_t
+        excludePID: pid_t,
+        areaSourceRect: CGRect?,
+        areaPixelWidth: Int?,
+        areaPixelHeight: Int?
     ) throws -> FilterAndSize {
         switch kind {
-        case .screen:
+        case .screen, .area:
             var displayID: UInt32 = 0
             if sourceID.hasPrefix("display:") {
                 displayID = UInt32(String(sourceID.dropFirst("display:".count))) ?? 0
@@ -401,17 +417,33 @@ final class CaptureSession: NSObject, SCStreamDelegate, SCStreamOutput {
             guard let matched else {
                 throw CaptureError.displayNotFound
             }
-            var width = matched.width
-            var height = matched.height
-            width -= width % 2
-            height -= height % 2
 
             var excluded: [SCWindow] = []
             if excludePID > 0 {
                 excluded = content.windows.filter { $0.owningApplication?.processID == excludePID }
             }
             let filter = SCContentFilter(display: matched, excludingWindows: excluded)
-            return FilterAndSize(filter: filter, width: width, height: height)
+
+            if kind == .area, let areaSourceRect, let areaPixelWidth, let areaPixelHeight {
+                var width = areaPixelWidth
+                var height = areaPixelHeight
+                width -= width % 2
+                height -= height % 2
+                if width < 2 { width = 2 }
+                if height < 2 { height = 2 }
+                return FilterAndSize(
+                    filter: filter,
+                    width: width,
+                    height: height,
+                    sourceRect: areaSourceRect
+                )
+            }
+
+            var width = matched.width
+            var height = matched.height
+            width -= width % 2
+            height -= height % 2
+            return FilterAndSize(filter: filter, width: width, height: height, sourceRect: nil)
 
         case .window:
             var windowID: UInt32 = 0
@@ -428,7 +460,7 @@ final class CaptureSession: NSObject, SCStreamDelegate, SCStreamOutput {
             if width < 2 { width = 2 }
             if height < 2 { height = 2 }
             let filter = SCContentFilter(desktopIndependentWindow: matched)
-            return FilterAndSize(filter: filter, width: width, height: height)
+            return FilterAndSize(filter: filter, width: width, height: height, sourceRect: nil)
         }
     }
 

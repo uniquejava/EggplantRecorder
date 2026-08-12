@@ -24,6 +24,10 @@ final class AppState: ObservableObject {
     let optionsBar = OptionsBarController()
     let filesList = FilesListController()
     let statusItem = StatusItemController()
+    let areaSelection = AreaSelectionController()
+
+    /// Set after area overlay Continue; consumed when OptionsBar records.
+    private(set) var pendingArea: AreaSelectionResult?
 
     private var elapsedTimer: Timer?
     private var recordingAnchor = Date()
@@ -49,15 +53,36 @@ final class AppState: ObservableObject {
 
     func showOptions(mode: RecordingKind) {
         guard phase != .recording else { return }
+        areaSelection.hide()
         optionsMode = mode
         phase = .configuring
         optionsBar.show(mode: mode)
+    }
+
+    func showAreaSelection() {
+        guard phase != .recording else { return }
+        optionsBar.hide()
+        pendingArea = nil
+        phase = .configuring
+        areaSelection.show(
+            onComplete: { [weak self] result in
+                guard let self else { return }
+                self.pendingArea = result
+                self.showOptions(mode: .area)
+            },
+            onCancel: { [weak self] in
+                guard let self else { return }
+                self.pendingArea = nil
+                self.phase = .idle
+            }
+        )
     }
 
     func hideOptions() {
         optionsBar.hide()
         if phase == .configuring {
             phase = .idle
+            pendingArea = nil
         }
     }
 
@@ -67,6 +92,7 @@ final class AppState: ObservableObject {
             try RecordingsLibrary.ensureDirectory()
             let output = RecordingsLibrary.makeOutputURL(kind: config.kind)
             try await recorder.start(config: config, outputURL: output)
+            pendingArea = nil
             optionsBar.hide()
             phase = .recording
             isPaused = false
@@ -180,4 +206,7 @@ struct RecordingConfig {
     var systemAudio: Bool
     var microphone: Bool
     var microphoneDeviceID: String?
+    var areaSourceRect: CGRect?
+    var areaPixelWidth: Int?
+    var areaPixelHeight: Int?
 }

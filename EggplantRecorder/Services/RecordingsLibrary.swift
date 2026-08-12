@@ -33,16 +33,29 @@ struct RecordingEntry: Identifiable, Hashable {
 enum RecordingKind: String, Hashable {
     case screen
     case window
+    case area
 
     var displayName: String {
         switch self {
         case .screen: return "Screen"
         case .window: return "Window"
+        case .area: return "Area"
+        }
+    }
+
+    var filePrefix: String {
+        switch self {
+        case .screen: return "Screen"
+        case .window: return "Window"
+        case .area: return "Area"
         }
     }
 
     static func from(filename: String) -> RecordingKind {
-        filename.lowercased().hasPrefix("window-") ? .window : .screen
+        let lower = filename.lowercased()
+        if lower.hasPrefix("window-") { return .window }
+        if lower.hasPrefix("area-") { return .area }
+        return .screen
     }
 }
 
@@ -59,8 +72,7 @@ enum RecordingsLibrary {
     static func makeOutputURL(kind: RecordingKind, date: Date = Date()) -> URL {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd-HHmmss"
-        let prefix = kind == .window ? "Window" : "Screen"
-        let name = "\(prefix)-\(formatter.string(from: date)).mp4"
+        let name = "\(kind.filePrefix)-\(formatter.string(from: date)).mp4"
         return directoryURL.appendingPathComponent(name)
     }
 

@@ -79,6 +79,9 @@ enum CaptureSources {
                     height: h
                 )
             }
+        case .area:
+            // Area sources come from AreaSelectionController, not SCK enumeration.
+            return []
         }
     }
 

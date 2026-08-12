@@ -17,7 +17,10 @@ final class RecorderController: ObservableObject {
             systemAudio: config.systemAudio,
             microphone: config.microphone,
             microphoneDeviceID: config.microphoneDeviceID,
-            excludePID: excludePID
+            excludePID: excludePID,
+            areaSourceRect: config.areaSourceRect,
+            areaPixelWidth: config.areaPixelWidth,
+            areaPixelHeight: config.areaPixelHeight
         )
         isRecording = true
         isPaused = false

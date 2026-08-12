@@ -19,7 +19,6 @@
 
 ### 不做什么（本轮 / MVP）
 
-- 区域录制（菜单项可占位 “Coming soon”）
 - PiP 摄像头、Click Zoom、键盘捕获、倒计时、帧率/分辨率精细调节
 - Convert/Compress、Rename、VIP 等 OMI 扩展功能
 - 继续在 Wails 上堆功能（Wails 版仅作参考，可冻结）
@@ -46,12 +45,12 @@ Wails 冻结备份：`/Users/cyper/code/eggplant-projects/EggplantRecorder-wails
 启动 → 仅菜单栏图标
   ├─ 点击图标 → 弹出菜单
   │    ├─ Record Screen（全屏）
-  │    ├─ Record Area（禁用 / Coming soon）
+  │    ├─ Record Area（框选 → Continue → 参数条）
   │    ├─ Record Window（窗口）
   │    ├─ Show Files List
   │    └─ Quit
   │
-  ├─ 选 Screen / Window → 屏幕底部弹出「参数条」
+  ├─ 选 Screen / Window / Area(Continue 后) → 屏幕底部弹出「参数条」
   │    ├─ 选显示器或窗口
   │    ├─ System Sound / Microphone（+ 输入设备）
   │    └─ 红色 Record 按钮 → 开始录制，参数条关闭
@@ -195,8 +194,8 @@ EggplantRecorder/
 ## 6. 验收清单
 
 1. 冷启动：Dock 无常驻大窗，只有菜单栏图标；图标不是粗糙实心大圆。
-2. 菜单：Screen / Area(禁用) / Window / Files List / Quit。
-3. Screen/Window → 底部参数条 → Record → 参数条消失。
+2. 菜单：Screen / Area / Window / Files List / Quit。
+3. Screen/Window → 底部参数条 → Record → 参数条消失。Area → 遮罩框选 → Continue → 参数条 → Record。
 4. 录制中：菜单栏为 Pause + Stop + 计时；Pause 后计时停、文件时间线无冻帧。
 5. Stop → `~/Movies/EggplantRecorder/` 出现 MP4 → Files List 打开并高亮新文件。
 6. Edit / Finder / Delete / Play 可用（Edit 深度按 §3.5）。
@@ -207,16 +206,17 @@ EggplantRecorder/
 
 ## 7. 实施顺序（建议新会话按此拆）
 
-1. Xcode 工程 + Bundle ID + 权限 plist + 空 MenuBarExtra（好图标）
-2. 移植 ScreenCaptureKit 录屏（屏/窗 + 双音轨 + pause）
-3. 底部 Options 面板 + 权限态
-4. 录制中 Status Item 控制条
-5. 库目录 + Files List
-6. Edit / Export（可并行或二期）
-7. 稳定 codesign / 文档；冻结或归档 Wails 版说明
+1. ~~Xcode 工程 + Bundle ID + 权限 plist + 空 MenuBarExtra（好图标）~~
+2. ~~移植 ScreenCaptureKit 录屏（屏/窗 + 双音轨 + pause）~~
+3. ~~底部 Options 面板 + 权限态~~
+4. ~~录制中 Status Item 控制条~~
+5. ~~库目录 + Files List~~
+6. ~~Record Area（遮罩框选 + `sourceRect`）~~
+7. Edit / Export（下一刀优先）
+8. 稳定 codesign / 文档；Wails 已冻结备份
 
 ---
 
 ## 8. 给下一任 Agent 的一句话
 
-**不要继续扩 Wails。** 按本文在 SwiftUI 里重做托盘优先录屏器；行为以 OMI 交互 + 本仓库 `internal/capture` 语义为准；UI 范式抄 EggplantFred。
+**Screen / Window / Area 主路径已落地（见根目录 `AGENTS.md`）。** 不要扩 Wails。下一刀优先应用内 Edit/Export；Area 工具栏必须嵌在遮罩窗口内、手柄按位移缩放；改 mic / Quick Look / 冷启动开窗前先读 Hard-won pitfalls。

@@ -46,6 +46,11 @@ final class OptionsBarModel: ObservableObject {
             selectedMicID = microphones.first(where: \.isDefault)?.id ?? microphones.first?.id ?? ""
         }
 
+        if mode == .area {
+            await reloadArea()
+            return
+        }
+
         if !CapturePermissions.hasScreenAccess {
             permissionState = .needsGrant
             sources = []
@@ -78,6 +83,45 @@ final class OptionsBarModel: ObservableObject {
             bannerMessage = error.localizedDescription
             sources = []
             selectedSourceID = ""
+        }
+    }
+
+    private func reloadArea() async {
+        guard let area = appState?.pendingArea else {
+            permissionState = .needsGrant
+            sources = []
+            selectedSourceID = ""
+            bannerMessage = "No area selected. Pick Record Area again."
+            return
+        }
+
+        let source = CaptureSource(
+            id: "display:\(area.displayID)",
+            kind: .area,
+            name: "Area \(area.pixelWidth)×\(area.pixelHeight)",
+            width: area.pixelWidth,
+            height: area.pixelHeight
+        )
+        sources = [source]
+        selectedSourceID = source.id
+
+        if !CapturePermissions.hasScreenAccess {
+            permissionState = .needsGrant
+            return
+        }
+        // Touch SCK once so “granted but empty” relaunch case still surfaces.
+        do {
+            _ = try await CaptureSources.list(kind: .screen)
+            permissionState = .granted
+        } catch CaptureSourcesError.emptyAfterGrant {
+            permissionState = .needsRelaunch
+        } catch {
+            if CapturePermissions.hasScreenAccess {
+                permissionState = .needsRelaunch
+            } else {
+                permissionState = .needsGrant
+            }
+            bannerMessage = error.localizedDescription
         }
     }
 
@@ -120,12 +164,16 @@ final class OptionsBarModel: ObservableObject {
     }
 
     private func fireRecord(source: CaptureSource) {
+        let area = appState?.pendingArea
         let config = RecordingConfig(
             kind: mode,
             sourceID: source.id,
             systemAudio: systemAudio,
             microphone: microphone,
-            microphoneDeviceID: microphone ? selectedMicID : nil
+            microphoneDeviceID: microphone ? selectedMicID : nil,
+            areaSourceRect: mode == .area ? area?.sourceRect : nil,
+            areaPixelWidth: mode == .area ? area?.pixelWidth : nil,
+            areaPixelHeight: mode == .area ? area?.pixelHeight : nil
         )
         onRecord?(config)
     }
@@ -224,12 +272,16 @@ struct OptionsBarView: View {
     @ViewBuilder
     private var sourcePicker: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(model.mode == .screen ? "Display" : "Window")
+            Text(sourcePickerTitle)
                 .font(.system(size: 10, weight: .semibold))
                 .foregroundStyle(.secondary)
             if model.isLoading {
                 ProgressView()
                     .controlSize(.small)
+            } else if model.mode == .area {
+                Text(model.sources.first?.name ?? "No area")
+                    .font(.system(size: 13, weight: .medium))
+                    .frame(minWidth: 180, maxWidth: 240, alignment: .leading)
             } else {
                 Picker("", selection: $model.selectedSourceID) {
                     ForEach(model.sources) { source in
@@ -240,6 +292,14 @@ struct OptionsBarView: View {
                 .frame(minWidth: 180, maxWidth: 240)
                 .disabled(model.sources.isEmpty)
             }
+        }
+    }
+
+    private var sourcePickerTitle: String {
+        switch model.mode {
+        case .screen: return "Display"
+        case .window: return "Window"
+        case .area: return "Selection"
         }
     }
 

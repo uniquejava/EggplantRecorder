@@ -97,8 +97,7 @@ final class StatusItemController: NSObject {
     private func makeIdleMenu() -> NSMenu {
         let menu = NSMenu()
         menu.addItem(withTitle: "Record Screen", action: #selector(recordScreen), keyEquivalent: "")
-        let area = menu.addItem(withTitle: "Record Area (Coming soon)", action: nil, keyEquivalent: "")
-        area.isEnabled = false
+        menu.addItem(withTitle: "Record Area", action: #selector(recordArea), keyEquivalent: "")
         menu.addItem(withTitle: "Record Window", action: #selector(recordWindow), keyEquivalent: "")
         menu.addItem(.separator())
         menu.addItem(withTitle: "Show Files List", action: #selector(showFiles), keyEquivalent: "")
@@ -112,6 +111,10 @@ final class StatusItemController: NSObject {
 
     @objc private func recordScreen() {
         appState?.showOptions(mode: .screen)
+    }
+
+    @objc private func recordArea() {
+        appState?.showAreaSelection()
     }
 
     @objc private func recordWindow() {
