@@ -4,8 +4,7 @@ import CoreVideo
 import Foundation
 import ScreenCaptureKit
 
-/// ScreenCaptureKit recorder ported from Wails `capture_recorder.m`.
-/// Dual audio tracks, pause compresses timeline (no freeze frames).
+/// ScreenCaptureKit recorder: dual audio tracks, pause compresses timeline (no freeze frames).
 final class CaptureSession: NSObject, SCStreamDelegate, SCStreamOutput {
     private let queue = DispatchQueue(label: "click.yinsb.eggplantrecorder.capture")
 
