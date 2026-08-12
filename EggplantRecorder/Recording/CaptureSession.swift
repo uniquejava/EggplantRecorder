@@ -45,6 +45,7 @@ final class CaptureSession: NSObject, SCStreamDelegate, SCStreamOutput {
         microphone: Bool,
         microphoneDeviceID: String?,
         excludePID: pid_t,
+        showCursor: Bool = true,
         areaSourceRect: CGRect? = nil,
         areaPixelWidth: Int? = nil,
         areaPixelHeight: Int? = nil
@@ -82,6 +83,7 @@ final class CaptureSession: NSObject, SCStreamDelegate, SCStreamOutput {
                         systemAudio: systemAudio,
                         microphone: microphone,
                         microphoneDeviceID: microphoneDeviceID,
+                        showCursor: showCursor,
                         outputPath: outputPath
                     )
                     continuation.resume()
@@ -134,6 +136,7 @@ final class CaptureSession: NSObject, SCStreamDelegate, SCStreamOutput {
         systemAudio: Bool,
         microphone: Bool,
         microphoneDeviceID: String?,
+        showCursor: Bool,
         outputPath: String
     ) throws {
         self.outputPath = outputPath
@@ -213,7 +216,7 @@ final class CaptureSession: NSObject, SCStreamDelegate, SCStreamOutput {
         config.minimumFrameInterval = CMTime(value: 1, timescale: 30)
         config.queueDepth = 8
         config.pixelFormat = kCVPixelFormatType_32BGRA
-        config.showsCursor = true
+        config.showsCursor = showCursor
         config.capturesAudio = systemAudio
         if systemAudio || microphone {
             config.sampleRate = 48_000

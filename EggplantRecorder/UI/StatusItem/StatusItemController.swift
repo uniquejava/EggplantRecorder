@@ -118,7 +118,7 @@ final class StatusItemController: NSObject {
     }
 
     @objc private func recordWindow() {
-        appState?.showOptions(mode: .window)
+        appState?.showWindowSelection()
     }
 
     @objc private func showFiles() {

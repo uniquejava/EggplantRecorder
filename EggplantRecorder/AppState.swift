@@ -25,9 +25,12 @@ final class AppState: ObservableObject {
     let filesList = FilesListController()
     let statusItem = StatusItemController()
     let areaSelection = AreaSelectionController()
+    let windowSelection = WindowSelectionController()
 
     /// Set after area overlay Continue; consumed when OptionsBar records.
     private(set) var pendingArea: AreaSelectionResult?
+    /// Set after window pick; consumed when OptionsBar records.
+    private(set) var pendingWindow: WindowSelectionResult?
 
     private var elapsedTimer: Timer?
     private var recordingAnchor = Date()
@@ -51,18 +54,21 @@ final class AppState: ObservableObject {
         Task { await refreshRecordings() }
     }
 
-    func showOptions(mode: RecordingKind) {
+    func showOptions(mode: RecordingKind, anchorRect: CGRect? = nil) {
         guard phase != .recording else { return }
         areaSelection.hide()
+        windowSelection.hide()
         optionsMode = mode
         phase = .configuring
-        optionsBar.show(mode: mode)
+        optionsBar.show(mode: mode, anchorRect: anchorRect)
     }
 
     func showAreaSelection() {
         guard phase != .recording else { return }
         optionsBar.hide()
+        windowSelection.hide()
         pendingArea = nil
+        pendingWindow = nil
         phase = .configuring
         areaSelection.show(
             onComplete: { [weak self] result in
@@ -78,11 +84,33 @@ final class AppState: ObservableObject {
         )
     }
 
+    func showWindowSelection() {
+        guard phase != .recording else { return }
+        optionsBar.hide()
+        areaSelection.hide()
+        pendingArea = nil
+        pendingWindow = nil
+        phase = .configuring
+        windowSelection.show(
+            onComplete: { [weak self] result in
+                guard let self else { return }
+                self.pendingWindow = result
+                self.showOptions(mode: .window, anchorRect: result.hit.frame)
+            },
+            onCancel: { [weak self] in
+                guard let self else { return }
+                self.pendingWindow = nil
+                self.phase = .idle
+            }
+        )
+    }
+
     func hideOptions() {
         optionsBar.hide()
         if phase == .configuring {
             phase = .idle
             pendingArea = nil
+            pendingWindow = nil
         }
     }
 
@@ -93,6 +121,7 @@ final class AppState: ObservableObject {
             let output = RecordingsLibrary.makeOutputURL(kind: config.kind)
             try await recorder.start(config: config, outputURL: output)
             pendingArea = nil
+            pendingWindow = nil
             optionsBar.hide()
             phase = .recording
             isPaused = false
@@ -206,6 +235,7 @@ struct RecordingConfig {
     var systemAudio: Bool
     var microphone: Bool
     var microphoneDeviceID: String?
+    var showCursor: Bool = true
     var areaSourceRect: CGRect?
     var areaPixelWidth: Int?
     var areaPixelHeight: Int?

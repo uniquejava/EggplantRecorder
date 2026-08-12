@@ -13,9 +13,9 @@ Native macOS **15+** menu-bar screen recorder (SwiftUI + AppKit), OMI-inspired.
 
 ## Status
 
-**On `main`:** tray-only launch; Record **Screen / Area / Window**; dual audio + pause; Files List with Quick Look + Play.
+**On `main`:** tray-only launch; Record **Screen / Area / Window** (Window = hover dashed border → click); OMI-like glass options bar; dual audio + cursor toggle + pause; Files List with Quick Look + Play.
 
-**Still open:** in-app Edit/trim; Convert/Compress / Rename / Remove from List.
+**Still open:** in-app Edit/trim; Convert/Compress / Rename / Remove from List; options placeholders (PiP, FPS, …).
 
 ## Open / build
 
@@ -44,19 +44,21 @@ Scheme: `EggplantRecorder`. First Screen Recording / Microphone grant may need a
 ```text
 EggplantRecorder/
   AppState.swift
-  Recording/          # ScreenCaptureKit + writer (+ area sourceRect)
-  UI/StatusItem/      # tray glyph + Pause/Stop/timer
-  UI/OptionsBar/      # bottom config panel
-  UI/AreaSelection/   # dim overlay + Continue bar
-  UI/FilesList/       # library window (~800pt)
-  Services/           # library, thumbnails, Quick Look
+  Recording/            # ScreenCaptureKit + writer (+ area sourceRect, WindowHitTester)
+  UI/StatusItem/        # tray glyph + Pause/Stop/timer
+  UI/OptionsBar/        # OMI glass panel (260/260/100, bottom +16pt)
+  UI/AreaSelection/     # dim overlay + Continue bar
+  UI/WindowSelection/   # hover window highlight → click
+  UI/FilesList/         # library window (~800pt)
+  Services/             # library, thumbnails, Quick Look
 ```
 
 ## Manual check
 
 1. Cold start → **only** menu bar icon (no Files List).
-2. Record Screen/Window → options bar → Record.
-3. Record Area → pale-blue dashed selection + handles → Continue still clickable → options → Record → `Area-….mp4`.
-4. Status item → Pause / Stop / clock (pause freezes elapsed + file timeline).
-5. Stop → MP4 in `~/Movies/EggplantRecorder/` → Files List; Preview = Quick Look, Play = default app; double-click = Preview.
-6. Right-click row → OMI-ordered menu (unimplemented items disabled).
+2. Record Screen → options bar at bottom center (~16pt up) → Record.
+3. Record Area → pale-blue dashed selection + handles → Continue → options → Record → `Area-….mp4`.
+4. Record Window → hover blue dashed border on target window → click → options (no window dropdown) → Record → `Window-….mp4`.
+5. Status item → Pause / Stop / clock (pause freezes elapsed + file timeline).
+6. Stop → MP4 in `~/Movies/EggplantRecorder/` → Files List; Preview = Quick Look, Play = default app; double-click = Preview.
+7. Right-click row → OMI-ordered menu (unimplemented items disabled).

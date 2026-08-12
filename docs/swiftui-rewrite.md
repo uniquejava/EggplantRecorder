@@ -208,15 +208,16 @@ EggplantRecorder/
 
 1. ~~Xcode 工程 + Bundle ID + 权限 plist + 空 MenuBarExtra（好图标）~~
 2. ~~移植 ScreenCaptureKit 录屏（屏/窗 + 双音轨 + pause）~~
-3. ~~底部 Options 面板 + 权限态~~
+3. ~~底部 Options 面板 + 权限态~~（已升级为 OMI 三栏毛玻璃；占位项见 AGENTS.md）
 4. ~~录制中 Status Item 控制条~~
 5. ~~库目录 + Files List~~
 6. ~~Record Area（遮罩框选 + `sourceRect`）~~
-7. Edit / Export（下一刀优先）
-8. 稳定 codesign / 文档；Wails 已冻结备份
+7. ~~Record Window 悬停点选（无窗口下拉）~~
+8. Edit / Export（下一刀优先）
+9. 稳定 codesign / 文档；Wails 已冻结备份
 
 ---
 
 ## 8. 给下一任 Agent 的一句话
 
-**Screen / Window / Area 主路径已落地（见根目录 `AGENTS.md`）。** 不要扩 Wails。下一刀优先应用内 Edit/Export；Area 工具栏必须嵌在遮罩窗口内、手柄按位移缩放；改 mic / Quick Look / 冷启动开窗前先读 Hard-won pitfalls。
+**Screen / Area / Window(hover-pick) + OMI options 主路径已落地（见根目录 `AGENTS.md`）。** 不要扩 Wails。下一刀优先应用内 Edit/Export；改 options / Window pick / mic / Quick Look / 冷启动开窗前先读 Hard-won pitfalls。
