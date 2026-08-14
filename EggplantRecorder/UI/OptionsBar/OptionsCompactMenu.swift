@@ -28,13 +28,13 @@ struct OptionsCompactMenuTrigger: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape(Rectangle())
         .overlay {
-            OptionsCompactMenuAnchor(items: items, onSelect: onSelect)
+            CompactMenuAnchor(items: items, onSelect: onSelect)
         }
     }
 }
 
 /// Invisible AppKit view that owns mouse-down → compact `NSMenu`.
-private struct OptionsCompactMenuAnchor: NSViewRepresentable {
+struct CompactMenuAnchor: NSViewRepresentable {
     let items: [OptionsMenuItem]
     let onSelect: (String) -> Void
 
@@ -51,7 +51,7 @@ private struct OptionsCompactMenuAnchor: NSViewRepresentable {
     }
 }
 
-private final class OptionsCompactMenuNSView: NSView {
+final class OptionsCompactMenuNSView: NSView {
     var items: [OptionsMenuItem] = []
     var onSelect: ((String) -> Void)?
 
@@ -79,6 +79,7 @@ private final class OptionsCompactMenuNSView: NSView {
         // Compact option rows — this is what SwiftUI `Menu` cannot shrink.
         menu.font = NSFont.systemFont(ofSize: 11)
         menu.autoenablesItems = false
+        menu.minimumWidth = max(bounds.width, 80)
 
         for item in items {
             let mi = NSMenuItem(
@@ -93,9 +94,17 @@ private final class OptionsCompactMenuNSView: NSView {
             menu.addItem(mi)
         }
 
-        // Open just under the trigger.
-        let point = NSPoint(x: 0, y: bounds.height + 2)
-        menu.popUp(positioning: nil, at: point, in: self)
+        // SwiftUI overlays often sit in a flipped hosting view; converting to
+        // screen coords puts the menu's top-left on the field's bottom-left.
+        let local = NSPoint(
+            x: bounds.minX,
+            y: isFlipped ? bounds.maxY : bounds.minY
+        )
+        let windowPoint = convert(local, to: nil)
+        var screenPoint = window?.convertToScreen(NSRect(origin: windowPoint, size: .zero)).origin
+            ?? event.locationInWindow
+        screenPoint.y -= 2
+        menu.popUp(positioning: nil, at: screenPoint, in: nil)
     }
 }
 

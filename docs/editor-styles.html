@@ -1,0 +1,1103 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>EggplantRecorder — Editor / Export styles</title>
+<style>
+  :root {
+    --pick: #0a84ff;
+    --blue: rgb(163, 193, 240);
+    --omi-y: #e8c547;
+    --char: #2c2e33;
+    --ink: #e8eaed;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font: 13px/1.4 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+    color: #1a1a1a;
+    background:
+      radial-gradient(1200px 600px at 50% -10%, #7a8fa3 0%, transparent 55%),
+      linear-gradient(180deg, #6b7c8c, #4a5866);
+    min-height: 100vh;
+    padding: 28px 24px 64px;
+  }
+  h1 {
+    margin: 0 0 6px;
+    font-size: 20px;
+    font-weight: 650;
+    letter-spacing: -0.02em;
+    color: #fff;
+    text-shadow: 0 1px 2px rgba(0,0,0,.25);
+  }
+  .intro {
+    color: rgba(255,255,255,.78);
+    max-width: 760px;
+    margin-bottom: 22px;
+  }
+  .intro strong { color: #fff; font-weight: 600; }
+  .grid {
+    display: grid;
+    gap: 28px;
+    grid-template-columns: 1fr;
+    max-width: 860px;
+  }
+  .card {
+    background: rgba(255,255,255,.12);
+    border: 1px solid rgba(255,255,255,.18);
+    border-radius: 14px;
+    padding: 16px 16px 20px;
+    backdrop-filter: blur(8px);
+  }
+  .card-head {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+  .card-head input {
+    margin-top: 3px;
+    width: 16px;
+    height: 16px;
+    accent-color: var(--pick);
+  }
+  .card-meta { flex: 1; }
+  .card-meta h2 {
+    margin: 0 0 2px;
+    font-size: 14px;
+    font-weight: 650;
+    color: #fff;
+  }
+  .card-meta p {
+    margin: 0;
+    font-size: 12px;
+    color: rgba(255,255,255,.72);
+  }
+  .badge {
+    font-size: 10px;
+    font-weight: 650;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    padding: 3px 7px;
+    border-radius: 999px;
+    background: rgba(0,0,0,.28);
+    color: rgba(255,255,255,.85);
+    white-space: nowrap;
+  }
+  .badge.ref { background: rgba(255,80,60,.35); }
+  .badge.now { background: rgba(0,0,0,.4); }
+  .stage {
+    display: flex;
+    justify-content: center;
+    padding: 18px 10px 14px;
+    background:
+      linear-gradient(180deg, transparent, rgba(0,0,0,.12)),
+      repeating-linear-gradient(-12deg, transparent 0 10px, rgba(255,255,255,.03) 10px 11px);
+    border-radius: 10px;
+    border: 1px dashed rgba(255,255,255,.2);
+    overflow: auto;
+  }
+  .dims {
+    margin-top: 10px;
+    text-align: center;
+    font-size: 11px;
+    color: rgba(255,255,255,.55);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ===== Window chrome ===== */
+  .win {
+    width: 760px;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 18px 48px rgba(0,0,0,.38);
+    font-size: 12px;
+    user-select: none;
+  }
+  .tb {
+    height: 36px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 12px;
+    position: relative;
+  }
+  .dots { display: flex; gap: 7px; flex: 0 0 auto; }
+  .dots i {
+    width: 12px; height: 12px; border-radius: 50%; display: block;
+  }
+  .dots .r { background: #ff5f57; }
+  .dots .y { background: #febc2e; }
+  .dots .g { background: #28c840; }
+  .tb .title {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    font-weight: 560;
+    font-size: 12px;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+    max-width: 62%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .tb .act { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+
+  /* Fake recording (VS Code-ish) */
+  .scene {
+    height: 100%;
+    display: grid;
+    grid-template-columns: 36px 92px 1fr;
+    background: #1e1e1e;
+  }
+  .scene .act { background: #333333; }
+  .scene .side {
+    background: #252526;
+    padding: 10px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .scene .side span {
+    display: block; height: 6px; border-radius: 2px;
+    background: rgba(255,255,255,.12);
+  }
+  .scene .side span:nth-child(1) { width: 78%; }
+  .scene .side span:nth-child(2) { width: 54%; }
+  .scene .side span:nth-child(3) { width: 66%; background: #4ec9b0; opacity: .55; }
+  .scene .side span:nth-child(4) { width: 42%; }
+  .scene .code {
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    background:
+      linear-gradient(180deg, #1e1e1e, #1a1a1a);
+  }
+  .scene .code b, .scene .code em, .scene .code i {
+    display: inline-block; height: 7px; border-radius: 2px; margin-right: 6px;
+  }
+  .scene .code b { width: 48px; background: #569cd6; }
+  .scene .code em { width: 72px; background: #9cdcfe; }
+  .scene .code i { width: 38px; background: #ce9178; }
+  .scene .code .ln { height: 7px; display: flex; align-items: center; opacity: .9; }
+  .scene .term {
+    margin-top: auto;
+    height: 44px;
+    background: #0c0c0c;
+    border-top: 1px solid #333;
+    padding: 8px 10px;
+  }
+  .scene .term span {
+    display: block; height: 5px; width: 46%;
+    background: #6a9955; border-radius: 2px;
+  }
+
+  .preview { position: relative; height: 248px; background: #000; }
+  .preview.short { height: 220px; }
+
+  /* Transport + filmstrip */
+  .transport {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px 0;
+  }
+  .play {
+    width: 28px; height: 28px; border-radius: 50%;
+    display: grid; place-items: center;
+    flex: 0 0 auto;
+    font-size: 11px;
+  }
+  .play.lg { width: 36px; height: 36px; font-size: 13px; }
+  .clock {
+    font: 500 12px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-variant-numeric: tabular-nums;
+    opacity: .7;
+  }
+  .clock strong { opacity: 1; font-weight: 600; }
+  .io { margin-left: auto; display: flex; gap: 10px; font-size: 11px; opacity: .55; font-variant-numeric: tabular-nums; }
+
+  .strip-wrap { padding: 8px 14px 10px; }
+  .strip {
+    position: relative;
+    height: 52px;
+    border-radius: 6px;
+    overflow: hidden;
+    display: flex;
+  }
+  .th {
+    flex: 1;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,.04), transparent 40%),
+      repeating-linear-gradient(90deg, #2a2e36 0 18px, #23262e 18px 19px);
+    border-right: 1px solid rgba(0,0,0,.45);
+  }
+  .th:nth-child(odd) { filter: brightness(1.12); }
+  .th:nth-child(3n) { filter: brightness(.92); }
+  .dimL, .dimR {
+    position: absolute; top: 0; bottom: 0;
+    background: rgba(0,0,0,.55);
+    pointer-events: none;
+  }
+  .dimL { left: 0; width: 22%; }
+  .dimR { right: 0; width: 26%; }
+  .sel {
+    position: absolute;
+    left: 22%; width: 52%; top: 0; bottom: 0;
+    pointer-events: none;
+  }
+  .sel .h {
+    position: absolute; top: 0; bottom: 0; width: 8px;
+    display: grid; place-items: center;
+  }
+  .sel .h::after {
+    content: "";
+    width: 2px; height: 18px; border-radius: 2px;
+    background: rgba(0,0,0,.3);
+  }
+  .sel .h.l { left: 0; }
+  .sel .h.r { right: 0; }
+  .head {
+    position: absolute; top: 0; bottom: 0; width: 2px;
+    left: 48%;
+    background: #fff;
+    box-shadow: 0 0 0 1px rgba(0,0,0,.25);
+  }
+
+  .namechip {
+    display: inline-block;
+    margin: 0 14px 8px;
+    padding: 3px 10px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 560;
+  }
+
+  /* Export regions */
+  .export { padding: 0 14px 14px; }
+  .panel {
+    display: grid;
+    gap: 12px;
+    padding: 12px 14px;
+    border-radius: 10px;
+  }
+  .fields { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+  .row {
+    display: flex; align-items: center; gap: 8px;
+    min-height: 22px;
+  }
+  .lab { width: 72px; flex: 0 0 auto; opacity: .72; font-size: 11.5px; }
+  .dd {
+    flex: 1;
+    min-width: 0;
+    height: 24px;
+    padding: 0 8px;
+    border-radius: 5px;
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 11.5px; font-weight: 560;
+  }
+  .dd::after { content: "▾"; opacity: .4; font-size: 9px; }
+  .vol {
+    flex: 1; height: 4px; border-radius: 99px; position: relative;
+  }
+  .vol::after {
+    content: "";
+    position: absolute; left: 0; top: -4px;
+    width: 12px; height: 12px; border-radius: 50%;
+  }
+  .row.dim { opacity: .4; }
+  .actions { display: flex; flex-direction: column; gap: 8px; justify-content: center; }
+  .btn {
+    height: 36px; border-radius: 8px;
+    display: grid; place-items: center;
+    font-weight: 650; font-size: 13px;
+  }
+  .est { text-align: center; font-size: 10.5px; opacity: .65; }
+
+  .bar {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 12px;
+  }
+  .chip {
+    height: 24px; padding: 0 8px; border-radius: 5px;
+    display: flex; align-items: center; gap: 6px;
+    font-size: 11px; font-weight: 560;
+  }
+  .chip em { font-style: normal; opacity: .5; font-weight: 500; }
+  .grow { flex: 1; }
+  .btn-sm {
+    height: 28px; padding: 0 14px; border-radius: 6px;
+    display: grid; place-items: center;
+    font-weight: 650; font-size: 12px;
+  }
+
+  /* Inspector */
+  .split { display: grid; grid-template-columns: 1fr 228px; }
+  .rail { display: flex; flex-direction: column; padding: 12px; gap: 8px; }
+  .rail h3 {
+    margin: 0 0 4px; font-size: 11px; font-weight: 650;
+    letter-spacing: .04em; text-transform: uppercase; opacity: .45;
+  }
+  .rail .dd { flex: none; width: 100%; }
+  .rail .lab { width: auto; margin-bottom: 2px; }
+  .rail .stack { display: flex; flex-direction: column; gap: 2px; }
+
+  /* ===== A: OMI ===== */
+  .omi { background: #3a3d44; color: #f2f2f2; }
+  .omi .tb { background: #32353b; color: #ddd; }
+  .omi .strip { height: 56px; border-radius: 4px; }
+  .omi .sel { outline: 2.5px solid var(--omi-y); outline-offset: -1px; border-radius: 2px; }
+  .omi .sel .h { width: 10px; background: var(--omi-y); }
+  .omi .sel .h::after { background: rgba(80,60,0,.45); height: 20px; }
+  .omi .play {
+    background: #fff; color: #222;
+    width: 40px; height: 40px; font-size: 14px;
+  }
+  .omi .namechip { background: #fff; color: #222; }
+  .omi .panel { background: #8b8e96; color: #1c1c1e; grid-template-columns: 1fr 148px; }
+  .omi .lab { color: #2a2a2c; opacity: .85; }
+  .omi .dd { background: #d8dadd; color: #222; }
+  .omi .vol { background: #c5c7cc; }
+  .omi .vol::after { background: #5c5e64; left: 62%; }
+  .omi .preview-btn { background: #e23b3b; color: #fff; }
+  .omi .export-btn { background: #3bb56a; color: #fff; }
+  .omi .est { color: #2a2a2c; }
+
+  /* ===== B: current ===== */
+  .cur { background: #ececec; color: #1d1d1f; }
+  .cur .tb { background: #e6e6e6; border-bottom: 1px solid #d0d0d0; }
+  .cur .tb .title { color: #3a3a3c; }
+  .cur .body { background: #fff; }
+  .cur .export-hdr {
+    background: #0a84ff; color: #fff;
+    height: 24px; padding: 0 12px; border-radius: 5px;
+    font-size: 12px; font-weight: 600;
+    display: grid; place-items: center;
+  }
+  .cur .transport { background: #fff; }
+  .cur .strip-wrap { background: #fff; padding-bottom: 14px; }
+  .cur .play { color: #1d1d1f; }
+  .cur .sel { outline: 2px solid var(--blue); outline-offset: -1px; border-radius: 4px; }
+  .cur .sel .h { background: #fff; box-shadow: 0 0.5px 2px rgba(0,0,0,.35); }
+  .cur .note {
+    margin: 0 14px 14px;
+    font-size: 11px; color: #8e8e93;
+  }
+
+  /* ===== C: solid tool (match options bar) ===== */
+  .solid { background: var(--char); color: var(--ink); }
+  .solid .tb {
+    background: #26282c;
+    border-bottom: 1px solid rgba(255,255,255,.06);
+  }
+  .solid .play { background: #1f2125; color: #fff; }
+  .solid .sel { outline: 2px solid var(--blue); outline-offset: -1px; border-radius: 4px; }
+  .solid .sel .h { background: var(--blue); }
+  .solid .sel .h::after { background: rgba(20,40,80,.45); }
+  .solid .export {
+    padding: 0;
+    border-top: 1px solid rgba(255,255,255,.06);
+  }
+  .solid .panel {
+    background: #2c2e33;
+    border-radius: 0;
+    grid-template-columns: 1fr 1fr 132px;
+    padding: 12px 14px 14px;
+    gap: 16px;
+  }
+  .solid .dd {
+    background: #1f2125;
+    border: 1px solid #4a4e57;
+    color: var(--ink);
+  }
+  .solid .vol { background: #1f2125; border: 1px solid #4a4e57; }
+  .solid .vol::after { background: #9aa0a8; left: 62%; }
+  .solid .btn {
+    background: #3d7eff; color: #fff; height: 40px;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.08);
+  }
+  .solid .est { opacity: .5; }
+
+  /* ===== D: cinema ===== */
+  .cin { background: #111214; color: #f4f4f5; }
+  .cin .tb { background: #111214; color: #c8c8cc; }
+  .cin .preview { height: 280px; }
+  .cin .overlay {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    padding: 28px 14px 10px;
+    background: linear-gradient(180deg, transparent, rgba(0,0,0,.72));
+    display: flex; align-items: flex-end; gap: 10px;
+  }
+  .cin .overlay .clock { color: #fff; opacity: .9; text-shadow: 0 1px 2px #000; }
+  .cin .strip-wrap { padding: 0; }
+  .cin .strip { border-radius: 0; height: 44px; }
+  .cin .sel { outline: 1.5px solid #fff; outline-offset: -1px; }
+  .cin .sel .h { width: 6px; background: #fff; }
+  .cin .sel .h::after { background: #111; height: 14px; }
+  .cin .bar {
+    background: #18191c;
+    border-top: 1px solid rgba(255,255,255,.06);
+    padding: 8px 12px;
+  }
+  .cin .chip {
+    background: #26282c;
+    border: 1px solid rgba(255,255,255,.08);
+    color: #e8eaed;
+  }
+  .cin .chip.ghost { opacity: .4; }
+  .cin .est { opacity: .45; font-size: 11px; margin: 0 6px; }
+  .cin .btn-sm { background: #fff; color: #111; }
+
+  /* ===== E: light document ===== */
+  .lt { background: #f5f5f7; color: #1d1d1f; }
+  .lt .tb {
+    background: #e8e8ed;
+    border-bottom: 0.5px solid rgba(0,0,0,.12);
+  }
+  .lt .tb .title { color: #3a3a3c; font-weight: 600; }
+  .lt .preview {
+    margin: 12px 14px 0;
+    height: 236px;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 0 0 0.5px rgba(0,0,0,.12);
+  }
+  .lt .play { background: #e5e5ea; color: #1d1d1f; }
+  .lt .sel { outline: 2px solid #007aff; outline-offset: -1px; border-radius: 4px; }
+  .lt .sel .h { background: #007aff; }
+  .lt .sel .h::after { background: rgba(255,255,255,.75); }
+  .lt .head { background: #007aff; }
+  .lt .panel {
+    background: #fff;
+    border: 0.5px solid rgba(0,0,0,.1);
+    grid-template-columns: 1fr 128px;
+    box-shadow: 0 1px 2px rgba(0,0,0,.04);
+  }
+  .lt .dd { background: #f2f2f4; color: #1d1d1f; }
+  .lt .vol { background: #e5e5ea; }
+  .lt .vol::after { background: #007aff; left: 62%; }
+  .lt .btn { background: #007aff; color: #fff; }
+  .lt .ghost {
+    background: transparent; color: #007aff; font-weight: 560; font-size: 12px;
+    height: auto; display: grid; place-items: center;
+  }
+
+  /* ===== F: inspector ===== */
+  .ins { background: #1c1d20; color: var(--ink); }
+  .ins .tb {
+    background: #232428;
+    border-bottom: 1px solid rgba(255,255,255,.06);
+  }
+  .ins .preview { height: 268px; }
+  .ins .sel { outline: 2px solid var(--blue); outline-offset: -1px; border-radius: 4px; }
+  .ins .sel .h { background: var(--blue); }
+  .ins .sel .h::after { background: rgba(20,40,80,.45); }
+  .ins .play { background: #2a2c31; color: #fff; }
+  .ins .rail {
+    background: #25262a;
+    border-left: 1px solid rgba(255,255,255,.06);
+  }
+  .ins .dd {
+    background: #1c1d20;
+    border: 1px solid #3a3d44;
+    color: var(--ink);
+  }
+  .ins .vol { background: #1c1d20; border: 1px solid #3a3d44; height: 4px; }
+  .ins .vol::after { background: var(--blue); left: 62%; }
+  .ins .btn {
+    background: #3d7eff; color: #fff; height: 34px; margin-top: 8px;
+  }
+  .ins .ghost {
+    background: transparent; color: rgba(255,255,255,.45);
+    height: 24px; font-weight: 500; font-size: 11.5px;
+  }
+
+  /* ===== G: light inspector, contrast-fixed ===== */
+  .ins-lt { background: #f5f5f7; color: #1d1d1f; }
+  .ins-lt .split {
+    align-items: stretch;
+    grid-template-columns: 1fr 248px;
+  }
+  .ins-lt .split > div:first-child { min-width: 0; }
+  .ins-lt .tb {
+    background: #e8e8ed;
+    border-bottom: 0.5px solid rgba(0,0,0,.16);
+  }
+  .ins-lt .tb .title { color: #1d1d1f; font-weight: 600; }
+  .ins-lt .preview {
+    margin: 12px 12px 0;
+    height: 248px;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 0 0 0.5px rgba(0,0,0,.16);
+  }
+  .ins-lt .play { background: #e5e5ea; color: #1d1d1f; }
+  .ins-lt .clock { opacity: 1; color: #1d1d1f; }
+  .ins-lt .io { opacity: 1; color: #3a3a3c; }
+  .ins-lt .sel { outline: 2px solid #007aff; outline-offset: -1px; border-radius: 4px; }
+  .ins-lt .sel .h { background: #007aff; }
+  .ins-lt .sel .h::after { background: rgba(255,255,255,.85); }
+  .ins-lt .head { background: #007aff; }
+  .ins-lt .strip {
+    border-radius: 6px;
+    box-shadow: 0 0 0 0.5px rgba(0,0,0,.14);
+  }
+  .ins-lt .rail {
+    background: #fff;
+    border-left: 0.5px solid rgba(0,0,0,.14);
+    padding: 14px 14px 12px;
+  }
+  .ins-lt .rail h3 {
+    color: #6e6e73;
+    opacity: 1;
+    font-weight: 650;
+  }
+  .ins-lt .lab {
+    opacity: 1;
+    color: #3a3a3c;
+    font-weight: 560;
+    font-size: 11.5px;
+  }
+  .ins-lt .dd {
+    background: #fff;
+    border: 0.5px solid #c7c7cc;
+    color: #1d1d1f;
+    font-weight: 560;
+  }
+  .ins-lt .audio-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 18px;
+    padding: 2px 0;
+  }
+  .ins-lt .pair {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .ins-lt .vol-val {
+    flex: 0 0 auto;
+    min-width: 36px;
+    text-align: right;
+    font: 560 11.5px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: #1d1d1f;
+  }
+  .ins-lt .seg {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    background: #e8e8ed;
+    border-radius: 6px;
+    padding: 2px;
+    margin-top: 2px;
+  }
+  .ins-lt .seg span {
+    text-align: center;
+    font-size: 11.5px;
+    font-weight: 560;
+    padding: 4px 0;
+    color: #3a3a3c;
+    border-radius: 4px;
+  }
+  .ins-lt .seg span.on {
+    background: #fff;
+    color: #1d1d1f;
+    box-shadow: 0 0.5px 1px rgba(0,0,0,.12);
+  }
+  .ins-lt .audio-row .vol {
+    flex: 1;
+    width: auto;
+    margin: 0;
+  }
+  .ins-lt .dd-sm { flex: 0 0 76px; }
+  .ins-lt .vol {
+    flex: none;
+    height: 6px;
+    background: #d2d2d7;
+    border: 0;
+    border-radius: 99px;
+  }
+  .ins-lt .vol::after {
+    width: 14px;
+    height: 14px;
+    top: -4px;
+    left: 62%;
+    background: #007aff;
+    border: 2px solid #fff;
+    box-shadow: 0 0.5px 2px rgba(0,0,0,.28);
+  }
+  .ins-lt .btn {
+    background: #007aff;
+    color: #fff;
+    height: 32px;
+    margin-top: 0;
+    font-weight: 650;
+  }
+  .ins-lt .ghost {
+    background: #e8e8ed;
+    color: #1d1d1f;
+    height: 32px;
+    border-radius: 8px;
+    font-weight: 650;
+    font-size: 13px;
+    display: grid;
+    place-items: center;
+  }
+  .ins-lt .est {
+    color: #3a3a3c;
+    opacity: 1;
+    font-weight: 500;
+  }
+  .ins-lt .stack.off .lab,
+  .ins-lt .stack.off .dd {
+    color: #6e6e73;
+  }
+  .ins-lt .stack.off .dd {
+    background: #f2f2f4;
+    border-color: #d2d2d7;
+  }
+
+  .footer {
+    position: sticky;
+    bottom: 0;
+    margin: 28px -24px -64px;
+    padding: 14px 24px 20px;
+    background: linear-gradient(180deg, transparent, rgba(20,28,36,.92) 28%);
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+  }
+  .footer .pick { color: #fff; font-size: 13px; }
+  .footer .pick span { font-weight: 700; color: #7ec8ff; }
+  .footer button {
+    appearance: none; border: 0; border-radius: 8px;
+    padding: 8px 14px;
+    font: 600 13px/1 -apple-system, sans-serif;
+    background: #0a84ff; color: #fff; cursor: pointer;
+  }
+</style>
+</head>
+<body>
+  <h1>Editor / Export — 样式候选</h1>
+  <p class="intro">
+    对照的是 OMI 那页：<strong>黄框裁剪 + 底下一块灰卡片导出</strong>。
+    黄只是选区颜色；真正别扭的是导出区像外挂控件，红绿大按钮抢戏。
+    下面几版功能相同（预览 / 入出点 / 帧率·分辨率·质量·音频 / Export），只改结构和材质。
+    Zoom 一律标成不可用（我们没记点击坐标）。
+    <strong>G 已加重对比</strong>：标签不再发灰，Audio 是滑条 + Stereo 下拉，Preview 30s 改成实心次按钮。点选一张，告诉我代号即可落到 Swift。
+  </p>
+
+  <div class="grid">
+
+    <!-- G -->
+    <label class="card">
+      <div class="card-head">
+        <input type="radio" name="style" value="G" checked />
+        <div class="card-meta">
+          <h2>G · 浅色检查器（对比已修）</h2>
+          <p>F 的左预览 / 右导出 + 浅底。标签、音量条、Stereo、Preview 都按浅色可读来画，不再当装饰文字。</p>
+        </div>
+        <span class="badge">推荐</span>
+      </div>
+      <div class="stage">
+        <div class="win ins-lt">
+          <div class="tb">
+            <div class="dots"><i class="r"></i><i class="y"></i><i class="g"></i></div>
+            <div class="title">Edit — Screen-2026-08-13-000910</div>
+          </div>
+          <div class="split">
+            <div>
+              <div class="preview" data-scene></div>
+              <div class="transport">
+                <div class="play">▶</div>
+                <div class="clock"><strong>00:04.80</strong> / 00:05.33</div>
+                <div class="io">In 00:01.80 · Out 00:07.13</div>
+              </div>
+              <div class="strip-wrap">
+                <div class="strip" data-strip>
+                  <div class="dimL"></div><div class="dimR"></div>
+                  <div class="sel"><span class="h l"></span><span class="h r"></span></div>
+                  <div class="head"></div>
+                </div>
+              </div>
+            </div>
+            <div class="rail">
+              <h3>Export</h3>
+              <div class="stack"><span class="lab">Frame Rate</span><span class="dd">Original (24)</span></div>
+              <div class="stack"><span class="lab">Resolution</span><span class="dd">Original (1080p)</span></div>
+              <div class="stack"><span class="lab">Quality</span><span class="dd">High</span></div>
+              <div class="stack">
+                <span class="lab">Audio</span>
+                <div class="audio-row">
+                  <span class="vol"></span>
+                  <span class="vol-val">62%</span>
+                </div>
+                <div class="seg">
+                  <span class="on">Stereo</span>
+                  <span>Mono</span>
+                </div>
+              </div>
+              <div class="grow"></div>
+              <div class="est" style="text-align:left">About 1.7 MB</div>
+              <div class="ghost">Preview 30s</div>
+              <div class="btn">Export</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="dims">浅底 · 右栏白检查器 · 灰次按钮 Preview + 蓝 Export · Audio 滑条可读</div>
+    </label>
+
+    <!-- A -->
+    <label class="card">
+      <div class="card-head">
+        <input type="radio" name="style" value="A" />
+        <div class="card-meta">
+          <h2>A · OMI 对照</h2>
+          <p>黄选区、文件名白条、灰圆角参数卡、红 Preview / 绿 Export。功能齐全，像插件面板。</p>
+        </div>
+        <span class="badge ref">现状对照</span>
+      </div>
+      <div class="stage">
+        <div class="win omi">
+          <div class="tb">
+            <div class="dots"><i class="r"></i><i class="y"></i><i class="g"></i></div>
+            <div class="title">Edit</div>
+          </div>
+          <div class="preview" data-scene></div>
+          <div class="transport">
+            <div class="play lg">▶</div>
+            <div class="grow"></div>
+          </div>
+          <div class="strip-wrap">
+            <div class="strip" data-strip>
+              <div class="dimL"></div><div class="dimR"></div>
+              <div class="sel"><span class="h l"></span><span class="h r"></span></div>
+              <div class="head"></div>
+            </div>
+          </div>
+          <div class="transport" style="padding-top:0">
+            <div class="clock"><strong>00:04.80</strong> / 00:09.13</div>
+          </div>
+          <div class="namechip">Screen-2026-08-13-000910</div>
+          <div class="export">
+            <div class="panel">
+              <div class="fields">
+                <div class="row"><span class="lab">Frame Rate</span><span class="dd">Original (24 FPS)</span></div>
+                <div class="row"><span class="lab">Resolution</span><span class="dd">Original (1920×1080)</span></div>
+                <div class="row"><span class="lab">Quality</span><span class="dd">High</span></div>
+                <div class="row"><span class="lab">Audio</span><span class="vol"></span><span class="dd" style="flex:0 0 72px">Stereo</span></div>
+                <div class="row"><span class="lab">Zoom</span><span class="dd">No clicks</span></div>
+              </div>
+              <div class="actions">
+                <div class="btn preview-btn">Preview 30s</div>
+                <div class="btn export-btn">Export</div>
+                <div class="est">Estimate Size: 1.7 MB</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="dims">黄框 + 灰卡片 + 红绿按钮 · 最像截图，也最跳</div>
+    </label>
+
+    <!-- B -->
+    <label class="card">
+      <div class="card-head">
+        <input type="radio" name="style" value="B" />
+        <div class="card-meta">
+          <h2>B · 当前实现</h2>
+          <p>系统文档窗 + 淡蓝裁剪条 + 顶栏 Export。能用，但没有帧率 / 分辨率 / 质量，也没有体积估计。</p>
+        </div>
+        <span class="badge now">现网</span>
+      </div>
+      <div class="stage">
+        <div class="win cur">
+          <div class="tb">
+            <div class="dots"><i class="r"></i><i class="y"></i><i class="g"></i></div>
+            <div class="title">Edit — Screen-2026-08-13-000910</div>
+            <div class="act"><span class="export-hdr">Export</span></div>
+          </div>
+          <div class="body">
+            <div class="preview" data-scene></div>
+            <div class="transport">
+              <div class="play">▶</div>
+              <div class="clock">00:04.80  /  00:05.33</div>
+              <div class="io">In 00:01.80 · Out 00:07.13 · Reset</div>
+            </div>
+            <div class="strip-wrap">
+              <div class="strip" data-strip>
+                <div class="dimL"></div><div class="dimR"></div>
+                <div class="sel"><span class="h l"></span><span class="h r"></span></div>
+                <div class="head"></div>
+              </div>
+            </div>
+            <p class="note">导出选项尚未出现。裁剪条已是淡蓝（与 Area / Window 选框同色）。</p>
+          </div>
+        </div>
+      </div>
+      <div class="dims">960×640 窗 · 淡蓝选区 · 仅 trim + Export</div>
+    </label>
+
+    <!-- C -->
+    <label class="card">
+      <div class="card-head">
+        <input type="radio" name="style" value="C" />
+        <div class="card-meta">
+          <h2>C · 实心工具板</h2>
+          <p>和已落地的 Options Bar 同一块炭灰色。裁剪仍用淡蓝。导出是底栏三列，不是一张浮卡。</p>
+        </div>
+        <span class="badge">紧凑</span>
+      </div>
+      <div class="stage">
+        <div class="win solid">
+          <div class="tb">
+            <div class="dots"><i class="r"></i><i class="y"></i><i class="g"></i></div>
+            <div class="title">Edit — Screen-2026-08-13-000910</div>
+          </div>
+          <div class="preview" data-scene></div>
+          <div class="transport">
+            <div class="play">▶</div>
+            <div class="clock"><strong>00:04.80</strong> / 00:05.33</div>
+            <div class="io">In 00:01.80 · Out 00:07.13 · Reset</div>
+          </div>
+          <div class="strip-wrap">
+            <div class="strip" data-strip>
+              <div class="dimL"></div><div class="dimR"></div>
+              <div class="sel"><span class="h l"></span><span class="h r"></span></div>
+              <div class="head"></div>
+            </div>
+          </div>
+          <div class="export">
+            <div class="panel">
+              <div class="fields">
+                <div class="row"><span class="lab">Frame Rate</span><span class="dd">Original (24)</span></div>
+                <div class="row"><span class="lab">Resolution</span><span class="dd">Original (1080p)</span></div>
+                <div class="row"><span class="lab">Quality</span><span class="dd">High</span></div>
+              </div>
+              <div class="fields">
+                <div class="row"><span class="lab">Audio</span><span class="vol"></span><span class="dd" style="flex:0 0 64px">Stereo</span></div>
+                <div class="row dim"><span class="lab">Zoom</span><span class="dd">No clicks</span></div>
+              </div>
+              <div class="actions">
+                <div class="btn">Export</div>
+                <div class="est">约 1.7 MB</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="dims">炭灰实心 · radius 8 语言 · 淡蓝选区 · 单颗 Export</div>
+    </label>
+
+    <!-- D -->
+    <label class="card">
+      <div class="card-head">
+        <input type="radio" name="style" value="D" />
+        <div class="card-meta">
+          <h2>D · 播放器贴底</h2>
+          <p>预览尽量大，时间叠在画面上，胶片条贴着视频下沿。导出收成一行 chip，没有「参数板块」。</p>
+        </div>
+        <span class="badge">最轻</span>
+      </div>
+      <div class="stage">
+        <div class="win cin">
+          <div class="tb">
+            <div class="dots"><i class="r"></i><i class="y"></i><i class="g"></i></div>
+            <div class="title">Screen-2026-08-13-000910</div>
+          </div>
+          <div class="preview">
+            <div data-scene style="height:100%"></div>
+            <div class="overlay">
+              <div class="play lg" style="background:#fff;color:#111">▶</div>
+              <div class="clock">00:04.80 / 00:05.33</div>
+            </div>
+          </div>
+          <div class="strip-wrap">
+            <div class="strip" data-strip>
+              <div class="dimL"></div><div class="dimR"></div>
+              <div class="sel"><span class="h l"></span><span class="h r"></span></div>
+              <div class="head"></div>
+            </div>
+          </div>
+          <div class="bar">
+            <span class="chip"><em>FPS</em> 24</span>
+            <span class="chip"><em>Size</em> 1080p</span>
+            <span class="chip"><em>Quality</em> High</span>
+            <span class="chip"><em>Audio</em> Stereo</span>
+            <span class="chip ghost"><em>Zoom</em> Off</span>
+            <span class="grow"></span>
+            <span class="est">1.7 MB</span>
+            <span class="btn-sm">Export</span>
+          </div>
+        </div>
+      </div>
+      <div class="dims">黑播放器 · 白选区 · 一行导出 · 无卡片</div>
+    </label>
+
+    <!-- E -->
+    <label class="card">
+      <div class="card-head">
+        <input type="radio" name="style" value="E" />
+        <div class="card-meta">
+          <h2>E · 浅色文档窗</h2>
+          <p>QuickTime / 预览 气质：浅底、系统蓝、预览圆角卡片。干净，但和暗色录制条是两套皮。</p>
+        </div>
+        <span class="badge">系统感</span>
+      </div>
+      <div class="stage">
+        <div class="win lt">
+          <div class="tb">
+            <div class="dots"><i class="r"></i><i class="y"></i><i class="g"></i></div>
+            <div class="title">Edit — Screen-2026-08-13-000910</div>
+          </div>
+          <div class="preview" data-scene></div>
+          <div class="transport">
+            <div class="play">▶</div>
+            <div class="clock"><strong>00:04.80</strong> / 00:05.33</div>
+            <div class="io">In 00:01.80 · Out 00:07.13</div>
+          </div>
+          <div class="strip-wrap">
+            <div class="strip" data-strip>
+              <div class="dimL"></div><div class="dimR"></div>
+              <div class="sel"><span class="h l"></span><span class="h r"></span></div>
+              <div class="head"></div>
+            </div>
+          </div>
+          <div class="export">
+            <div class="panel">
+              <div class="fields">
+                <div class="row"><span class="lab">Frame Rate</span><span class="dd">Original (24 FPS)</span></div>
+                <div class="row"><span class="lab">Resolution</span><span class="dd">Original (1920×1080)</span></div>
+                <div class="row"><span class="lab">Quality</span><span class="dd">High</span></div>
+                <div class="row"><span class="lab">Audio</span><span class="vol"></span><span class="dd" style="flex:0 0 68px">Stereo</span></div>
+                <div class="row dim"><span class="lab">Zoom</span><span class="dd">No clicks</span></div>
+              </div>
+              <div class="actions">
+                <div class="ghost">Preview 30s</div>
+                <div class="btn">Export</div>
+                <div class="est">约 1.7 MB</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="dims">浅底 · 系统蓝 · Preview 降为文字链</div>
+    </label>
+
+    <!-- F -->
+    <label class="card">
+      <div class="card-head">
+        <input type="radio" name="style" value="F" />
+        <div class="card-meta">
+          <h2>F · 右侧检查器（深色）</h2>
+          <p>预览和时间线占满左侧，导出参数固定在右栏。布局同 G，只是暗色。浅色版见页首 G。</p>
+        </div>
+        <span class="badge">深色</span>
+      </div>
+      <div class="stage">
+        <div class="win ins">
+          <div class="tb">
+            <div class="dots"><i class="r"></i><i class="y"></i><i class="g"></i></div>
+            <div class="title">Edit — Screen-2026-08-13-000910</div>
+          </div>
+          <div class="split">
+            <div>
+              <div class="preview" data-scene></div>
+              <div class="transport">
+                <div class="play">▶</div>
+                <div class="clock"><strong>00:04.80</strong> / 00:05.33</div>
+                <div class="io">In 00:01.80 · Out 00:07.13</div>
+              </div>
+              <div class="strip-wrap">
+                <div class="strip" data-strip>
+                  <div class="dimL"></div><div class="dimR"></div>
+                  <div class="sel"><span class="h l"></span><span class="h r"></span></div>
+                  <div class="head"></div>
+                </div>
+              </div>
+            </div>
+            <div class="rail">
+              <h3>Export</h3>
+              <div class="stack"><span class="lab">Frame Rate</span><span class="dd">Original (24)</span></div>
+              <div class="stack"><span class="lab">Resolution</span><span class="dd">Original (1080p)</span></div>
+              <div class="stack"><span class="lab">Quality</span><span class="dd">High</span></div>
+              <div class="stack"><span class="lab">Audio · Stereo</span><span class="vol" style="width:100%;margin:8px 0 4px"></span></div>
+              <div class="stack dim" style="opacity:.4"><span class="lab">Zoom</span><span class="dd">No clicks</span></div>
+              <div class="grow"></div>
+              <div class="est" style="text-align:left">约 1.7 MB</div>
+              <div class="ghost">Preview 30s</div>
+              <div class="btn">Export</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="dims">左预览 + 右栏 · 淡蓝选区 · 适合更宽的窗</div>
+    </label>
+
+  </div>
+
+  <div class="footer">
+    <div class="pick">当前选择：<span id="picked">G</span></div>
+    <button type="button" id="copy">复制选择说明</button>
+  </div>
+
+<script>
+function sceneHTML() {
+  return `<div class="scene">
+    <div class="act"></div>
+    <div class="side"><span></span><span></span><span></span><span></span></div>
+    <div class="code">
+      <div class="ln"><b></b><em></em></div>
+      <div class="ln"><em></em><i></i><b></b></div>
+      <div class="ln"><b></b><i></i></div>
+      <div class="ln"><em></em><em></em><i></i></div>
+      <div class="ln"><b></b><em></em><i></i></div>
+      <div class="term"><span></span></div>
+    </div>
+  </div>`;
+}
+
+function fillStrip(el) {
+  const thumbs = Array.from({ length: 12 }, () => `<i class="th"></i>`).join("");
+  el.insertAdjacentHTML("afterbegin", thumbs);
+}
+
+document.querySelectorAll("[data-scene]").forEach((el) => {
+  el.innerHTML = sceneHTML();
+});
+document.querySelectorAll("[data-strip]").forEach(fillStrip);
+
+const picked = document.getElementById("picked");
+document.querySelectorAll('input[name="style"]').forEach((r) => {
+  r.addEventListener("change", () => { picked.textContent = r.value; });
+});
+
+document.getElementById("copy").addEventListener("click", async () => {
+  const v = document.querySelector('input[name="style"]:checked')?.value || "G";
+  const map = {
+    A: "A OMI 对照：黄选区 + 灰卡片 + 红绿按钮（不采用）",
+    B: "B 当前实现：系统窗 + 淡蓝裁剪 + 顶栏 Export，暂不加导出参数",
+    C: "C 实心工具板：炭灰窗、淡蓝选区、底栏三列导出（FPS/分辨率/质量 | 音频/Zoom占位 | Export+体积），与 Options Bar 同材质",
+    D: "D 播放器贴底：大预览、时间叠画面、胶片贴底、一行 chip 导出、白选区",
+    E: "E 浅色文档窗：系统蓝、浅底、Preview 降为文字链",
+    F: "F 右侧检查器（深色）：左预览时间线、右栏导出参数",
+    G: "G 浅色检查器（对比已修）：F 布局 + 浅底；标签深灰可读；Audio = 滑条+Stereo 下拉；Preview 30s 为实心次按钮；Export 系统蓝；Zoom 占位但仍可读",
+  };
+  const text = `选 Editor / Export 样式：${map[v]}。Zoom 占位禁用；双音轨导出保留。`;
+  try {
+    await navigator.clipboard.writeText(text);
+    const btn = document.getElementById("copy");
+    btn.textContent = "已复制";
+    setTimeout(() => { btn.textContent = "复制选择说明"; }, 1200);
+  } catch {
+    prompt("复制这段发给我：", text);
+  }
+});
+</script>
+</body>
+</html>

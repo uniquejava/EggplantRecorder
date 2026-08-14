@@ -13,7 +13,7 @@ struct TrimTimelineView: View {
 
     @State private var drag: DragKind?
 
-    private let barHeight: CGFloat = 56
+    private let barHeight: CGFloat = 64
     private let handleWidth: CGFloat = 8
     private let playheadWidth: CGFloat = 2
     private let hitSlop: CGFloat = 10
@@ -78,7 +78,7 @@ struct TrimTimelineView: View {
         let startX = x(for: start, width: width)
         let endX = x(for: end, width: width)
         return RoundedRectangle(cornerRadius: 4, style: .continuous)
-            .stroke(Color(nsColor: SelectionChrome.blue), lineWidth: 2)
+            .stroke(EditorChrome.trim, lineWidth: 2)
             .frame(width: max(handleWidth * 2, endX - startX), height: barHeight)
             .offset(x: startX)
             .allowsHitTesting(false)
@@ -86,7 +86,7 @@ struct TrimTimelineView: View {
 
     private func handle(at x: CGFloat) -> some View {
         RoundedRectangle(cornerRadius: 2, style: .continuous)
-            .fill(Color.white)
+            .fill(EditorChrome.trim)
             .overlay(
                 Capsule()
                     .fill(Color.black.opacity(0.28))

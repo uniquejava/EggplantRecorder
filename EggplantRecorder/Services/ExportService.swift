@@ -1,4 +1,5 @@
 import AVFoundation
+import CoreImage
 import CoreMedia
 import Foundation
 
@@ -28,8 +29,8 @@ enum ExportError: LocalizedError {
     }
 }
 
-/// Trims a library MP4. Video is re-encoded (frame-accurate); each audio track
-/// is copied so system + mic stay separate.
+/// Trims a library MP4. Video is re-encoded (frame-accurate). Audio is copied
+/// when settings allow, otherwise each track is re-encoded so system + mic stay separate.
 enum ExportService {
     private static let minDuration: TimeInterval = 0.1
 
@@ -38,6 +39,7 @@ enum ExportService {
         start: TimeInterval,
         end: TimeInterval,
         destination: URL,
+        settings: ExportSettings = ExportSettings(),
         progress: (@Sendable (Double) -> Void)? = nil
     ) async throws {
         let cancel = CancelFlag()
@@ -47,6 +49,7 @@ enum ExportService {
                 start: start,
                 end: end,
                 destination: destination,
+                settings: settings,
                 progress: progress,
                 cancel: cancel
             )
@@ -60,6 +63,7 @@ enum ExportService {
         start: TimeInterval,
         end: TimeInterval,
         destination: URL,
+        settings: ExportSettings,
         progress: (@Sendable (Double) -> Void)?,
         cancel: CancelFlag
     ) async throws {
@@ -87,6 +91,15 @@ enum ExportService {
             throw ExportError.noVideo
         }
 
+        let (outWidth, outHeight) = settings.outputSize(sourceWidth: width, sourceHeight: height)
+        let sourceFPS = Double(try await videoTrack.load(.nominalFrameRate))
+        let targetFPS = settings.targetFrameRate(sourceFPS: sourceFPS > 1 ? sourceFPS : 30)
+        let bitrate = settings.videoBitrate(
+            width: outWidth,
+            height: outHeight,
+            sourceFPS: sourceFPS > 1 ? sourceFPS : 30
+        )
+
         let timescale: CMTimeScale = 600
         let startTime = CMTime(seconds: trimmedStart, preferredTimescale: timescale)
         let durationTime = CMTime(seconds: trimmedEnd - trimmedStart, preferredTimescale: timescale)
@@ -108,8 +121,11 @@ enum ExportService {
                         audioTracks: audioTracks,
                         audioHints: audioHints,
                         transform: transform,
-                        width: width,
-                        height: height,
+                        width: outWidth,
+                        height: outHeight,
+                        bitrate: bitrate,
+                        targetFPS: targetFPS,
+                        settings: settings,
                         timeRange: timeRange,
                         destination: destination,
                         progress: progress,
@@ -131,6 +147,9 @@ enum ExportService {
         transform: CGAffineTransform,
         width: Int,
         height: Int,
+        bitrate: Int,
+        targetFPS: Double?,
+        settings: ExportSettings,
         timeRange: CMTimeRange,
         destination: URL,
         progress: (@Sendable (Double) -> Void)?,
@@ -153,11 +172,15 @@ enum ExportService {
         guard reader.canAdd(videoOutput) else { throw ExportError.cannotAddInput }
         reader.add(videoOutput)
 
+        let processAudio = settings.processesAudio
         var audioOutputs: [AVAssetReaderTrackOutput] = []
         audioOutputs.reserveCapacity(audioTracks.count)
         for track in audioTracks {
-            let output = AVAssetReaderTrackOutput(track: track, outputSettings: nil)
-            output.alwaysCopiesSampleData = false
+            let output = AVAssetReaderTrackOutput(
+                track: track,
+                outputSettings: processAudio ? pcmOutputSettings(channels: settings.audioChannels.channelCount) : nil
+            )
+            output.alwaysCopiesSampleData = processAudio
             guard reader.canAdd(output) else { throw ExportError.cannotAddInput }
             reader.add(output)
             audioOutputs.append(output)
@@ -169,7 +192,7 @@ enum ExportService {
             AVVideoWidthKey: width,
             AVVideoHeightKey: height,
             AVVideoCompressionPropertiesKey: [
-                AVVideoAverageBitRateKey: max(width * height * 6, 1_000_000),
+                AVVideoAverageBitRateKey: bitrate,
                 AVVideoProfileLevelKey: AVVideoProfileLevelH264HighAutoLevel,
             ],
         ]
@@ -179,18 +202,40 @@ enum ExportService {
         guard writer.canAdd(videoInput) else { throw ExportError.cannotAddInput }
         writer.add(videoInput)
 
+        let adaptor = AVAssetWriterInputPixelBufferAdaptor(
+            assetWriterInput: videoInput,
+            sourcePixelBufferAttributes: [
+                kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,
+                kCVPixelBufferWidthKey as String: width,
+                kCVPixelBufferHeightKey as String: height,
+            ]
+        )
+
         var audioInputs: [AVAssetWriterInput] = []
         audioInputs.reserveCapacity(audioTracks.count)
-        for hint in audioHints {
-            let input = AVAssetWriterInput(
-                mediaType: .audio,
-                outputSettings: nil,
-                sourceFormatHint: hint
-            )
-            input.expectsMediaDataInRealTime = false
-            guard writer.canAdd(input) else { throw ExportError.cannotAddInput }
-            writer.add(input)
-            audioInputs.append(input)
+        if processAudio {
+            for _ in audioTracks {
+                let input = AVAssetWriterInput(
+                    mediaType: .audio,
+                    outputSettings: aacOutputSettings(channels: settings.audioChannels.channelCount)
+                )
+                input.expectsMediaDataInRealTime = false
+                guard writer.canAdd(input) else { throw ExportError.cannotAddInput }
+                writer.add(input)
+                audioInputs.append(input)
+            }
+        } else {
+            for hint in audioHints {
+                let input = AVAssetWriterInput(
+                    mediaType: .audio,
+                    outputSettings: nil,
+                    sourceFormatHint: hint
+                )
+                input.expectsMediaDataInRealTime = false
+                guard writer.canAdd(input) else { throw ExportError.cannotAddInput }
+                writer.add(input)
+                audioInputs.append(input)
+            }
         }
 
         guard reader.startReading() else {
@@ -208,6 +253,9 @@ enum ExportService {
         let lock = NSLock()
         var remaining = 1 + audioInputs.count
         var pumpError: Error?
+        let scaler = FrameScaler(width: width, height: height)
+        let minFrameInterval = targetFPS.map { CMTime(seconds: 1 / $0, preferredTimescale: 600) }
+        let gain = Float(settings.volume)
 
         func finishOne() {
             lock.lock()
@@ -232,14 +280,17 @@ enum ExportService {
             if shouldSignal { done.signal() }
         }
 
-        pump(
+        pumpVideo(
             output: videoOutput,
             input: videoInput,
+            adaptor: adaptor,
+            scaler: scaler,
+            minFrameInterval: minFrameInterval,
             offset: offset,
             queue: pumpQueue,
             cancel: cancel,
-            onSample: { sample in
-                let seconds = CMTimeGetSeconds(CMSampleBufferGetPresentationTimeStamp(sample))
+            onSample: { pts in
+                let seconds = CMTimeGetSeconds(pts)
                 if totalSeconds > 0 {
                     progress?(min(0.99, max(0, seconds / totalSeconds)))
                 }
@@ -255,6 +306,9 @@ enum ExportService {
                 offset: offset,
                 queue: pumpQueue,
                 cancel: cancel,
+                mapSample: processAudio
+                    ? { applyVolume($0, gain: gain) }
+                    : { $0 },
                 onSample: { _ in },
                 onFinished: finishOne,
                 onFailure: fail
@@ -296,6 +350,7 @@ enum ExportService {
         offset: CMTime,
         queue: DispatchQueue,
         cancel: CancelFlag,
+        mapSample: @escaping (CMSampleBuffer) -> CMSampleBuffer?,
         onSample: @escaping (CMSampleBuffer) -> Void,
         onFinished: @escaping () -> Void,
         onFailure: @escaping (Error) -> Void
@@ -322,8 +377,14 @@ enum ExportService {
                     onFailure(ExportError.writerFailed("Could not adjust sample timing."))
                     return
                 }
-                onSample(shifted)
-                if !input.append(shifted) {
+                guard let mapped = mapSample(shifted) else {
+                    finished = true
+                    input.markAsFinished()
+                    onFailure(ExportError.writerFailed("Could not process audio."))
+                    return
+                }
+                onSample(mapped)
+                if !input.append(mapped) {
                     finished = true
                     input.markAsFinished()
                     onFailure(ExportError.writerFailed("Could not write media data."))
@@ -331,6 +392,126 @@ enum ExportService {
                 }
             }
         }
+    }
+
+    private static func pumpVideo(
+        output: AVAssetReaderOutput,
+        input: AVAssetWriterInput,
+        adaptor: AVAssetWriterInputPixelBufferAdaptor,
+        scaler: FrameScaler,
+        minFrameInterval: CMTime?,
+        offset: CMTime,
+        queue: DispatchQueue,
+        cancel: CancelFlag,
+        onSample: @escaping (CMTime) -> Void,
+        onFinished: @escaping () -> Void,
+        onFailure: @escaping (Error) -> Void
+    ) {
+        var finished = false
+        var nextPTS = CMTime.invalid
+        input.requestMediaDataWhenReady(on: queue) {
+            guard !finished else { return }
+            while input.isReadyForMoreMediaData {
+                if cancel.isCancelled {
+                    finished = true
+                    input.markAsFinished()
+                    onFailure(ExportError.cancelled)
+                    return
+                }
+                guard let sample = output.copyNextSampleBuffer() else {
+                    finished = true
+                    input.markAsFinished()
+                    onFinished()
+                    return
+                }
+                guard let shifted = shiftedSample(sample, offset: offset) else {
+                    finished = true
+                    input.markAsFinished()
+                    onFailure(ExportError.writerFailed("Could not adjust sample timing."))
+                    return
+                }
+                let pts = CMSampleBufferGetPresentationTimeStamp(shifted)
+                if minFrameInterval != nil, CMTIME_IS_VALID(nextPTS),
+                   CMTimeCompare(pts, nextPTS) < 0 {
+                    continue
+                }
+                guard let image = CMSampleBufferGetImageBuffer(shifted) else {
+                    finished = true
+                    input.markAsFinished()
+                    onFailure(ExportError.writerFailed("Could not read video frame."))
+                    return
+                }
+                guard let scaled = scaler.scale(image) else {
+                    finished = true
+                    input.markAsFinished()
+                    onFailure(ExportError.writerFailed("Could not scale video frame."))
+                    return
+                }
+                if !adaptor.append(scaled, withPresentationTime: pts) {
+                    finished = true
+                    input.markAsFinished()
+                    onFailure(ExportError.writerFailed("Could not write media data."))
+                    return
+                }
+                if let minFrameInterval {
+                    nextPTS = CMTimeAdd(pts, minFrameInterval)
+                }
+                onSample(pts)
+            }
+        }
+    }
+
+    private static func pcmOutputSettings(channels: Int) -> [String: Any] {
+        [
+            AVFormatIDKey: kAudioFormatLinearPCM,
+            AVSampleRateKey: 48_000,
+            AVNumberOfChannelsKey: channels,
+            AVLinearPCMBitDepthKey: 16,
+            AVLinearPCMIsNonInterleaved: false,
+            AVLinearPCMIsFloatKey: false,
+            AVLinearPCMIsBigEndianKey: false,
+        ]
+    }
+
+    private static func aacOutputSettings(channels: Int) -> [String: Any] {
+        [
+            AVFormatIDKey: kAudioFormatMPEG4AAC,
+            AVSampleRateKey: 48_000,
+            AVNumberOfChannelsKey: channels,
+            AVEncoderBitRateKey: channels == 1 ? 96_000 : 128_000,
+        ]
+    }
+
+    private static func applyVolume(_ sample: CMSampleBuffer, gain: Float) -> CMSampleBuffer? {
+        if abs(gain - 1) < 0.005 { return sample }
+        var copy: CMSampleBuffer?
+        let status = CMSampleBufferCreateCopy(
+            allocator: kCFAllocatorDefault,
+            sampleBuffer: sample,
+            sampleBufferOut: &copy
+        )
+        guard status == noErr, let copy, let data = CMSampleBufferGetDataBuffer(copy) else {
+            return sample
+        }
+        var length = 0
+        var pointer: UnsafeMutablePointer<Int8>?
+        guard CMBlockBufferGetDataPointer(
+            data,
+            atOffset: 0,
+            lengthAtOffsetOut: nil,
+            totalLengthOut: &length,
+            dataPointerOut: &pointer
+        ) == noErr, let pointer, length >= 2 else {
+            return copy
+        }
+        let count = length / MemoryLayout<Int16>.stride
+        pointer.withMemoryRebound(to: Int16.self, capacity: count) { samples in
+            for i in 0..<count {
+                let scaled = Float(samples[i]) * gain
+                samples[i] = Int16(max(-32768, min(32767, scaled.rounded())))
+            }
+        }
+        return copy
     }
 
     private static func shiftedSample(_ sample: CMSampleBuffer, offset: CMTime) -> CMSampleBuffer? {
@@ -365,6 +546,50 @@ enum ExportService {
         )
         guard status == noErr else { return nil }
         return copy
+    }
+}
+
+private final class FrameScaler {
+    private let width: Int
+    private let height: Int
+    private let context = CIContext(options: [.cacheIntermediates: false])
+
+    init(width: Int, height: Int) {
+        self.width = width
+        self.height = height
+    }
+
+    func scale(_ buffer: CVPixelBuffer) -> CVPixelBuffer? {
+        let srcW = CVPixelBufferGetWidth(buffer)
+        let srcH = CVPixelBufferGetHeight(buffer)
+        if srcW == width, srcH == height {
+            return buffer
+        }
+        var output: CVPixelBuffer?
+        let attrs: [CFString: Any] = [
+            kCVPixelBufferIOSurfacePropertiesKey: [:] as CFDictionary,
+            kCVPixelBufferPixelFormatTypeKey: kCVPixelFormatType_32BGRA,
+        ]
+        let status = CVPixelBufferCreate(
+            kCFAllocatorDefault,
+            width,
+            height,
+            kCVPixelFormatType_32BGRA,
+            attrs as CFDictionary,
+            &output
+        )
+        guard status == kCVReturnSuccess, let output else { return nil }
+        let image = CIImage(cvPixelBuffer: buffer)
+        let sx = CGFloat(width) / CGFloat(max(srcW, 1))
+        let sy = CGFloat(height) / CGFloat(max(srcH, 1))
+        let scaled = image.transformed(by: CGAffineTransform(scaleX: sx, y: sy))
+        context.render(
+            scaled,
+            to: output,
+            bounds: CGRect(x: 0, y: 0, width: width, height: height),
+            colorSpace: CGColorSpaceCreateDeviceRGB()
+        )
+        return output
     }
 }
 

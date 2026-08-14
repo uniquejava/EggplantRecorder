@@ -3,6 +3,55 @@ import AVFoundation
 import Foundation
 
 enum MediaProbe {
+    static func mediaInfo(of url: URL) async -> RecordingMediaInfo? {
+        let asset = AVURLAsset(url: url)
+        do {
+            let videoTracks = try await asset.loadTracks(withMediaType: .video)
+            let audioTracks = try await asset.loadTracks(withMediaType: .audio)
+            guard let video = videoTracks.first else { return nil }
+            let natural = try await video.load(.naturalSize)
+            let transform = try await video.load(.preferredTransform)
+            let mapped = natural.applying(transform)
+            var width = Int(abs(mapped.width).rounded())
+            var height = Int(abs(mapped.height).rounded())
+            if width % 2 != 0 { width -= 1 }
+            if height % 2 != 0 { height -= 1 }
+            let nominal = try await video.load(.nominalFrameRate)
+            let minDuration = try await video.load(.minFrameDuration)
+            let fileSize = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize).map { Int64($0) } ?? 0
+            return RecordingMediaInfo(
+                width: max(width, 2),
+                height: max(height, 2),
+                frameRate: resolvedFrameRate(nominal: Double(nominal), minFrameDuration: minDuration),
+                audioTrackCount: audioTracks.count,
+                fileSize: fileSize
+            )
+        } catch {
+            return nil
+        }
+    }
+
+    /// Prefer the track's capture cadence (`minFrameDuration`) over average
+    /// `nominalFrameRate`, which drops when pause skips frames. Snap to common
+    /// rates so "Original" doesn't show a ragged 23.
+    private static func resolvedFrameRate(nominal: Double, minFrameDuration: CMTime) -> Double {
+        let minSeconds = CMTimeGetSeconds(minFrameDuration)
+        let cadence = (minSeconds > 0 && minSeconds.isFinite) ? 1 / minSeconds : 0
+        let raw = cadence > 1 ? cadence : (nominal > 1 ? nominal : 30)
+        return snapFrameRate(raw)
+    }
+
+    private static func snapFrameRate(_ fps: Double) -> Double {
+        let standards: [Double] = [15, 24, 25, 30, 50, 60]
+        guard let nearest = standards.min(by: { abs($0 - fps) < abs($1 - fps) }) else {
+            return max(fps.rounded(), 1)
+        }
+        if abs(nearest - fps) <= 1.5 {
+            return nearest
+        }
+        return max(fps.rounded(), 1)
+    }
+
     static func duration(of url: URL) async -> TimeInterval {
         let asset = AVURLAsset(url: url)
         do {

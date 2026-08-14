@@ -18,12 +18,18 @@ final class EditorModel: ObservableObject {
     @Published var filmstrip: [NSImage] = []
     @Published var loadFailed = false
     @Published var alertMessage: String?
+    @Published var settings = ExportSettings()
+    @Published var sourceInfo: RecordingMediaInfo?
+    @Published var previewPlayer: AVPlayer?
+    @Published var isPreviewExport = false
 
     var onExported: ((String) -> Void)?
 
     private var timeObserver: Any?
     private var endObserver: NSObjectProtocol?
     private var exportTask: Task<Void, Never>?
+    private var previewURL: URL?
+    private var previewEndObserver: NSObjectProtocol?
 
     static let minimumTrim: TimeInterval = 0.1
 
@@ -41,6 +47,7 @@ final class EditorModel: ObservableObject {
     func teardown() {
         exportTask?.cancel()
         exportTask = nil
+        closePreview()
         player.pause()
         isPlaying = false
         if let timeObserver {
@@ -55,6 +62,10 @@ final class EditorModel: ObservableObject {
     }
 
     func togglePlay() {
+        if previewPlayer != nil {
+            togglePreviewPlay()
+            return
+        }
         if isPlaying {
             pause()
             return
@@ -120,28 +131,72 @@ final class EditorModel: ObservableObject {
         max(0, trimEnd - trimStart)
     }
 
+    var estimatedSizeText: String {
+        settings.estimatedSizeText(
+            trimDuration: trimDuration,
+            fullDuration: duration,
+            source: sourceInfo
+        )
+    }
+
     func export() {
         guard !isExporting, duration > 0 else { return }
         exportTask?.cancel()
-        exportTask = Task { await performExport() }
+        exportTask = Task { await performExport(preview: false) }
     }
 
-    private func performExport() async {
+    func exportPreview() {
+        guard !isExporting, duration > 0 else { return }
+        exportTask?.cancel()
+        exportTask = Task { await performExport(preview: true) }
+    }
+
+    func closePreview() {
+        if let previewEndObserver {
+            NotificationCenter.default.removeObserver(previewEndObserver)
+            self.previewEndObserver = nil
+        }
+        previewPlayer?.pause()
+        previewPlayer?.replaceCurrentItem(with: nil)
+        previewPlayer = nil
+        if let previewURL {
+            try? FileManager.default.removeItem(at: previewURL)
+            self.previewURL = nil
+        }
+    }
+
+    private func togglePreviewPlay() {
+        guard let previewPlayer else { return }
+        if previewPlayer.rate > 0 {
+            previewPlayer.pause()
+        } else {
+            previewPlayer.play()
+        }
+    }
+
+    private func performExport(preview: Bool) async {
         isExporting = true
+        isPreviewExport = preview
         exportProgress = 0
         pause()
         defer {
             isExporting = false
+            isPreviewExport = false
             exportProgress = 0
             exportTask = nil
         }
         do {
-            let destination = try RecordingsLibrary.makeEditOutputURL(from: path)
+            let end = preview ? min(trimEnd, trimStart + 30) : trimEnd
+            let destination = preview
+                ? FileManager.default.temporaryDirectory
+                    .appendingPathComponent("EggplantRecorder-preview-\(UUID().uuidString).mp4")
+                : try RecordingsLibrary.makeEditOutputURL(from: path)
             try await ExportService.exportTrimmed(
                 source: URL(fileURLWithPath: path),
                 start: trimStart,
-                end: trimEnd,
-                destination: destination
+                end: end,
+                destination: destination,
+                settings: settings
             ) { [weak self] progress in
                 Task { @MainActor in
                     self?.exportProgress = progress
@@ -151,7 +206,11 @@ final class EditorModel: ObservableObject {
                 try? FileManager.default.removeItem(at: destination)
                 return
             }
-            onExported?(destination.path)
+            if preview {
+                presentPreview(url: destination)
+            } else {
+                onExported?(destination.path)
+            }
         } catch is CancellationError {
             return
         } catch let error as ExportError {
@@ -160,6 +219,25 @@ final class EditorModel: ObservableObject {
         } catch {
             alertMessage = error.localizedDescription
         }
+    }
+
+    private func presentPreview(url: URL) {
+        closePreview()
+        previewURL = url
+        let item = AVPlayerItem(url: url)
+        let preview = AVPlayer(playerItem: item)
+        preview.volume = Float(settings.volume)
+        previewPlayer = preview
+        previewEndObserver = NotificationCenter.default.addObserver(
+            forName: .AVPlayerItemDidPlayToEndTime,
+            object: item,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                self?.previewPlayer?.pause()
+            }
+        }
+        preview.play()
     }
 }
 
@@ -196,6 +274,15 @@ extension EditorModel {
         }
         duration = seconds
         trimEnd = seconds
+        if let info = await MediaProbe.mediaInfo(of: url) {
+            sourceInfo = info
+            if !settings.availableFrameRates(source: info).contains(settings.frameRate) {
+                settings.frameRate = .original
+            }
+            if !settings.availableResolutions(source: info).contains(settings.resolution) {
+                settings.resolution = .original
+            }
+        }
         filmstrip = await MediaProbe.filmstrip(of: url, duration: seconds)
     }
 

@@ -6,17 +6,23 @@ struct EditorView: View {
     @FocusState private var isFocused: Bool
 
     var body: some View {
-        VStack(spacing: 0) {
-            header
-            Divider()
-            preview
-            Divider()
-            controls
+        HStack(spacing: 0) {
+            VStack(spacing: 0) {
+                preview
+                controls
+            }
+            EditorRailView(model: model)
         }
-        .frame(minWidth: 720, minHeight: 460)
+        .background(EditorChrome.window)
+        .preferredColorScheme(.light)
+        .frame(minWidth: 1000, minHeight: 640)
         .focusable()
+        .focusEffectDisabled()
         .focused($isFocused)
         .onAppear { isFocused = true }
+        .onChange(of: model.settings.volume) { _, volume in
+            model.player.volume = Float(volume)
+        }
         .onKeyPress(.space, phases: .down) { _ in
             model.togglePlay()
             return .handled
@@ -40,32 +46,6 @@ struct EditorView: View {
         )
     }
 
-    private var header: some View {
-        HStack(spacing: 12) {
-            Text(model.name)
-                .font(.headline)
-                .lineLimit(1)
-                .truncationMode(.middle)
-            Spacer(minLength: 12)
-            if model.isExporting {
-                ProgressView(value: model.exportProgress)
-                    .progressViewStyle(.linear)
-                    .frame(width: 140)
-                Text("Exporting…")
-                    .font(.system(size: 12))
-                    .foregroundStyle(.secondary)
-                    .monospacedDigit()
-            }
-            Button("Export") {
-                model.export()
-            }
-            .keyboardShortcut("s", modifiers: .command)
-            .disabled(model.isExporting || model.duration <= 0 || model.loadFailed)
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
-    }
-
     private var preview: some View {
         ZStack {
             Color.black
@@ -76,14 +56,37 @@ struct EditorView: View {
                     description: Text(model.name)
                 )
                 .foregroundStyle(.white)
+            } else if let previewPlayer = model.previewPlayer {
+                PlayerPreviewView(player: previewPlayer)
+                VStack {
+                    HStack {
+                        Spacer()
+                        Button("Close preview") {
+                            model.closePreview()
+                        }
+                        .buttonStyle(.plain)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(Color.black.opacity(0.55), in: Capsule())
+                        .padding(12)
+                    }
+                    Spacer()
+                }
             } else {
                 PlayerPreviewView(player: model.player)
                     .onTapGesture { model.togglePlay() }
-                if model.isExporting {
-                    Color.black.opacity(0.35)
+            }
+            if model.isExporting {
+                Color.black.opacity(0.4)
+                VStack(spacing: 10) {
                     ProgressView()
                         .controlSize(.large)
                         .tint(.white)
+                    Text(model.isPreviewExport ? "Rendering preview…" : "Exporting…")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(.white.opacity(0.9))
                 }
             }
         }
@@ -97,31 +100,33 @@ struct EditorView: View {
                     model.togglePlay()
                 } label: {
                     Image(systemName: model.isPlaying ? "pause.fill" : "play.fill")
-                        .font(.system(size: 14, weight: .semibold))
-                        .frame(width: 22, height: 22)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(EditorChrome.text)
+                        .frame(width: 28, height: 28)
+                        .background(EditorChrome.play, in: Circle())
                 }
-                .buttonStyle(.borderless)
-                .disabled(model.duration <= 0 || model.isExporting)
+                .buttonStyle(.plain)
+                .disabled(model.duration <= 0 || model.isExporting || model.previewPlayer != nil)
                 .help(model.isPlaying ? "Pause" : "Play")
 
                 Text("\(MediaProbe.formatClock(model.currentTime))  /  \(MediaProbe.formatClock(model.trimDuration))")
-                    .font(.system(size: 12.5).monospacedDigit())
-                    .foregroundStyle(.secondary)
+                    .font(.system(size: 13).monospacedDigit())
+                    .foregroundStyle(EditorChrome.text)
 
                 Spacer()
 
                 Text("In \(MediaProbe.formatClock(model.trimStart))")
                     .font(.system(size: 12).monospacedDigit())
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(EditorChrome.label)
                 Text("Out \(MediaProbe.formatClock(model.trimEnd))")
                     .font(.system(size: 12).monospacedDigit())
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(EditorChrome.label)
 
                 if model.isTrimmed {
                     Button("Reset") { model.resetTrim() }
                         .buttonStyle(.plain)
-                        .font(.system(size: 12))
-                        .foregroundStyle(.secondary)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(EditorChrome.export)
                         .disabled(model.isExporting)
                 }
             }
@@ -149,9 +154,11 @@ struct EditorView: View {
                 onChangeEnd: { model.setTrimEnd($0) }
             )
             .opacity(model.duration > 0 ? 1 : 0.4)
-            .disabled(model.duration <= 0 || model.isExporting)
+            .disabled(model.duration <= 0 || model.isExporting || model.previewPlayer != nil)
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 12)
+        .padding(.top, 10)
+        .padding(.bottom, 14)
+        .background(EditorChrome.window)
     }
 }
