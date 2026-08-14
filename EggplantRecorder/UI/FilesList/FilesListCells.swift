@@ -53,16 +53,15 @@ struct RecordingThumbnailView: View {
     @State private var image: NSImage?
 
     var body: some View {
+        // Fixed layout box — never let NSImage / video aspect ratio leak into
+        // Table cell intrinsic width (Area clips are often non-16:9 / portrait).
         ZStack {
             RoundedRectangle(cornerRadius: 3, style: .continuous)
                 .fill(Color(nsColor: .quaternaryLabelColor).opacity(0.25))
             if let image {
                 Image(nsImage: image)
                     .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .frame(width: size.width, height: size.height)
-                    .clipped()
-                    .cornerRadius(3)
+                    .scaledToFill()
             } else {
                 Image(systemName: "film")
                     .font(.system(size: 12))
@@ -70,14 +69,17 @@ struct RecordingThumbnailView: View {
             }
         }
         .frame(width: size.width, height: size.height)
+        .clipped()
         .clipShape(RoundedRectangle(cornerRadius: 3, style: .continuous))
+        .fixedSize()
         .task(id: path) {
             image = await MediaProbe.thumbnail(of: URL(fileURLWithPath: path))
         }
     }
 }
 
-/// AppKit table chrome (row height + double-click).
+/// AppKit hooks that SwiftUI Table does not expose (row height + double-click).
+/// Avoid touching column widths / intercell spacing — that desyncs headers from cells.
 struct TableChromeInstaller: NSViewRepresentable {
     var rowHeight: CGFloat
     var onDoubleClick: () -> Void
@@ -118,11 +120,11 @@ struct TableChromeInstaller: NSViewRepresentable {
             guard let table = Self.findTableView(in: root) else { return }
             table.rowHeight = rowHeight
             table.usesAlternatingRowBackgroundColors = true
-            table.intercellSpacing = NSSize(width: 4, height: 1)
-            table.columnAutoresizingStyle = .sequentialColumnAutoresizingStyle
+            // Overlay scrollers do not steal column width (legacy scrollers desync header vs rows).
             if let scrollView = table.enclosingScrollView {
                 scrollView.hasHorizontalScroller = false
                 scrollView.horizontalScrollElasticity = .none
+                scrollView.scrollerStyle = .overlay
                 scrollView.autohidesScrollers = true
             }
             if hookedTable !== table || table.doubleAction != #selector(doubleClicked(_:)) {

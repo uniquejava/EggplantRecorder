@@ -87,29 +87,30 @@ struct FilesListView: View {
                         .lineLimit(1)
                         .truncationMode(.middle)
                 }
-                .padding(.vertical, 3)
-                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .width(min: 160, ideal: 240)
+            .width(min: 200, ideal: 280, max: .infinity)
+            .alignment(.leading)
 
             TableColumn("Duration") { entry in
                 Text(entry.formattedDuration)
                     .font(Self.bodyFont.monospacedDigit())
-                    .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .width(min: 70, ideal: 76, max: 80)
+            .width(78)
+            .alignment(.leading)
 
             TableColumn("Size") { entry in
                 Text(entry.formattedSize)
                     .font(Self.bodyFont)
             }
-            .width(min: 52, ideal: 60, max: 68)
+            .width(64)
+            .alignment(.leading)
 
             TableColumn("Type") { entry in
                 Text(entry.kind.displayName)
                     .font(Self.bodyFont)
             }
-            .width(min: 52, ideal: 58, max: 68)
+            .width(64)
+            .alignment(.leading)
 
             TableColumn("Date") { entry in
                 Text(entry.formattedDate)
@@ -117,11 +118,11 @@ struct FilesListView: View {
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
-            .width(min: 124, ideal: 132, max: 140)
+            .width(136)
+            .alignment(.leading)
 
             TableColumn("Operation") { entry in
                 HStack(spacing: 4) {
-                    Spacer(minLength: 0)
                     OperationIconButton(
                         systemName: "eye.circle",
                         tooltip: "Preview",
@@ -132,13 +133,13 @@ struct FilesListView: View {
                         tooltip: "Play",
                         action: { play(entry.path) }
                     )
-                    Spacer(minLength: 0)
                 }
-                .frame(maxWidth: .infinity)
             }
-            .width(min: 72, ideal: 80, max: 88)
+            .width(84)
+            .alignment(.center)
         }
         .font(Self.bodyFont)
+        .tableStyle(.inset(alternatesRowBackgrounds: true))
         .contextMenu(forSelectionType: String.self) { paths in
             if let path = paths.first {
                 Button("Preview") { quickLook(path) }
