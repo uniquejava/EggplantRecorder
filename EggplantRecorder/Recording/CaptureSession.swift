@@ -61,7 +61,7 @@ final class CaptureSession: NSObject, SCStreamDelegate, SCStreamOutput {
         }
 
         let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: false)
-        let filterAndSize = try Self.makeFilter(
+        let filterAndSize = try CaptureFilter.make(
             content: content,
             sourceID: sourceID,
             kind: kind,
@@ -191,14 +191,14 @@ final class CaptureSession: NSObject, SCStreamDelegate, SCStreamOutput {
         writer.add(videoInput)
 
         if systemAudio {
-            let input = Self.makeAACAudioInput()
+            let input = CaptureAudio.makeAACInput()
             if writer.canAdd(input) {
                 writer.add(input)
                 systemAudioInput = input
             }
         }
         if microphone {
-            let input = Self.makeAACAudioInput()
+            let input = CaptureAudio.makeAACInput()
             if writer.canAdd(input) {
                 writer.add(input)
                 micAudioInput = input
@@ -313,23 +313,27 @@ final class CaptureSession: NSObject, SCStreamDelegate, SCStreamOutput {
             sessionAnchor = pts
         }
 
-        let relative = relativePTS(forHost: pts)
+        let relative = CaptureTiming.relativePTS(
+            host: pts,
+            sessionAnchor: sessionAnchor,
+            pausedAccumulated: pausedAccumulated
+        )
 
         switch type {
         case .screen:
             guard let videoInput, videoInput.isReadyForMoreMediaData else { return }
             guard let imageBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
-            let videoPTS = monotonicPTS(relative, previous: lastVideoPTS)
+            let videoPTS = CaptureTiming.monotonicPTS(relative, previous: lastVideoPTS)
             if adaptor?.append(imageBuffer, withPresentationTime: videoPTS) == true {
                 lastVideoPTS = videoPTS
             }
         case .audio:
             var last = lastSysAudioPTS
-            _ = appendAudio(sampleBuffer, to: systemAudioInput, pts: relative, lastPTS: &last)
+            _ = CaptureAudio.append(sampleBuffer, to: systemAudioInput, pts: relative, lastPTS: &last)
             lastSysAudioPTS = last
         case .microphone:
             var last = lastMicPTS
-            _ = appendAudio(sampleBuffer, to: micAudioInput, pts: relative, lastPTS: &last)
+            _ = CaptureAudio.append(sampleBuffer, to: micAudioInput, pts: relative, lastPTS: &last)
             lastMicPTS = last
         @unknown default:
             break
@@ -340,182 +344,11 @@ final class CaptureSession: NSObject, SCStreamDelegate, SCStreamOutput {
         lastError = error
     }
 
-    // MARK: - Timing helpers
-
-    private func relativePTS(forHost pts: CMTime) -> CMTime {
-        var relative = CMTimeSubtract(pts, sessionAnchor)
-        if CMTimeCompare(pausedAccumulated, .zero) > 0 {
-            relative = CMTimeSubtract(relative, pausedAccumulated)
-        }
-        if CMTimeCompare(relative, .zero) < 0 {
-            relative = .zero
-        }
-        return relative
-    }
-
-    private func monotonicPTS(_ candidate: CMTime, previous: CMTime) -> CMTime {
-        guard previous.isValid else { return candidate }
-        if CMTimeCompare(candidate, previous) <= 0 {
-            return CMTimeAdd(previous, CMTime(value: 1, timescale: 600))
-        }
-        return candidate
-    }
-
-    private func appendAudio(
-        _ sampleBuffer: CMSampleBuffer,
-        to input: AVAssetWriterInput?,
-        pts: CMTime,
-        lastPTS: inout CMTime
-    ) -> Bool {
-        guard let input, input.isReadyForMoreMediaData else { return false }
-        let outPTS = monotonicPTS(pts, previous: lastPTS)
-        var timing = CMSampleTimingInfo(
-            duration: CMSampleBufferGetDuration(sampleBuffer),
-            presentationTimeStamp: outPTS,
-            decodeTimeStamp: .invalid
-        )
-        var timed: CMSampleBuffer?
-        CMSampleBufferCreateCopyWithNewTiming(
-            allocator: kCFAllocatorDefault,
-            sampleBuffer: sampleBuffer,
-            sampleTimingEntryCount: 1,
-            sampleTimingArray: &timing,
-            sampleBufferOut: &timed
-        )
-        guard let timed else { return false }
-        defer { /* CF retained by Create */ }
-        let ok = input.append(timed)
-        if ok {
-            lastPTS = outPTS
-        }
-        return ok
-    }
-
-    // MARK: - Filter / audio helpers
-
-    private struct FilterAndSize {
-        let filter: SCContentFilter
-        let width: Int
-        let height: Int
-        let sourceRect: CGRect?
-    }
-
-    private static func makeFilter(
-        content: SCShareableContent,
-        sourceID: String,
-        kind: RecordingKind,
-        excludePID: pid_t,
-        areaSourceRect: CGRect?,
-        areaPixelWidth: Int?,
-        areaPixelHeight: Int?
-    ) throws -> FilterAndSize {
-        switch kind {
-        case .screen, .area:
-            var displayID: UInt32 = 0
-            if sourceID.hasPrefix("display:") {
-                displayID = UInt32(String(sourceID.dropFirst("display:".count))) ?? 0
-            }
-            let matched = content.displays.first { $0.displayID == displayID } ?? content.displays.first
-            guard let matched else {
-                throw CaptureError.displayNotFound
-            }
-
-            var excluded: [SCWindow] = []
-            if excludePID > 0 {
-                excluded = content.windows.filter { $0.owningApplication?.processID == excludePID }
-            }
-            let filter = SCContentFilter(display: matched, excludingWindows: excluded)
-
-            if kind == .area, let areaSourceRect, let areaPixelWidth, let areaPixelHeight {
-                var width = areaPixelWidth
-                var height = areaPixelHeight
-                width -= width % 2
-                height -= height % 2
-                if width < 2 { width = 2 }
-                if height < 2 { height = 2 }
-                return FilterAndSize(
-                    filter: filter,
-                    width: width,
-                    height: height,
-                    sourceRect: areaSourceRect
-                )
-            }
-
-            var width = matched.width
-            var height = matched.height
-            width -= width % 2
-            height -= height % 2
-            return FilterAndSize(filter: filter, width: width, height: height, sourceRect: nil)
-
-        case .window:
-            var windowID: UInt32 = 0
-            if sourceID.hasPrefix("window:") {
-                windowID = UInt32(String(sourceID.dropFirst("window:".count))) ?? 0
-            }
-            guard let matched = content.windows.first(where: { $0.windowID == windowID }) else {
-                throw CaptureError.windowNotFound
-            }
-            var width = Int(matched.frame.width)
-            var height = Int(matched.frame.height)
-            width -= width % 2
-            height -= height % 2
-            if width < 2 { width = 2 }
-            if height < 2 { height = 2 }
-            let filter = SCContentFilter(desktopIndependentWindow: matched)
-            return FilterAndSize(filter: filter, width: width, height: height, sourceRect: nil)
-        }
-    }
-
-    private static func makeAACAudioInput() -> AVAssetWriterInput {
-        var stereo = AudioChannelLayout()
-        stereo.mChannelLayoutTag = kAudioChannelLayoutTag_Stereo
-        let layoutData = Data(bytes: &stereo, count: MemoryLayout<AudioChannelLayout>.size)
-        let settings: [String: Any] = [
-            AVFormatIDKey: kAudioFormatMPEG4AAC,
-            AVSampleRateKey: 48_000,
-            AVNumberOfChannelsKey: 2,
-            AVEncoderBitRateKey: 192_000,
-            AVChannelLayoutKey: layoutData,
-        ]
-        let input = AVAssetWriterInput(mediaType: .audio, outputSettings: settings)
-        input.expectsMediaDataInRealTime = true
-        return input
-    }
-
     private static func friendlyStartError(_ error: Error) -> Error {
         let ns = error as NSError
         if ns.code == -3820 {
             return CaptureError.microphoneStartFailed
         }
         return error
-    }
-}
-
-enum CaptureError: LocalizedError {
-    case alreadyRecording
-    case microphoneDenied
-    case microphoneStartFailed
-    case cannotAddVideoInput
-    case displayNotFound
-    case windowNotFound
-    case finalizeFailed
-
-    var errorDescription: String? {
-        switch self {
-        case .alreadyRecording:
-            return "Already recording"
-        case .microphoneDenied:
-            return "Microphone permission denied. Enable it in System Settings → Privacy & Security → Microphone."
-        case .microphoneStartFailed:
-            return "Failed to start microphone capture. Pick another input device, or grant Microphone permission in System Settings."
-        case .cannotAddVideoInput:
-            return "Cannot add video input"
-        case .displayNotFound:
-            return "Display not found"
-        case .windowNotFound:
-            return "Window not found"
-        case .finalizeFailed:
-            return "Failed to finalize recording"
-        }
     }
 }

@@ -34,9 +34,9 @@ Product requirements: [`docs/product.md`](docs/product.md).
 
 | Priority | Item | Notes |
 |----------|------|--------|
-| High | In-app **Edit** (trim / export) | Spec §3.5; today Edit is disabled stub; Play opens default app |
-| Medium | OMI context stubs | Convert/Compress, Rename, Remove from List — menu present, disabled |
-| Low | Wire options placeholders | PiP / Click Zoom / Keyboard / FPS / Resolution / Countdown |
+| High | In-app **Edit** (trim / export) | Spec §3.5; stub in `UI/FilesList/`; add `UI/Editor/` rather than growing FilesListView |
+| Medium | OMI context stubs | Convert/Compress, Rename, Remove from List — menu present, disabled (`FilesListView`) |
+| Low | Wire options placeholders | PiP / Click Zoom / Keyboard / FPS / Resolution / Countdown → `OptionsBarColumns` + `OptionsBarModel` |
 | Low | Dock / app icon polish | |
 | Low | ExportService / ffmpeg | Spec allows system ffmpeg; list duration uses `AVURLAsset` today |
 
@@ -58,19 +58,24 @@ Product requirements: [`docs/product.md`](docs/product.md).
 ```text
 EggplantRecorder/
   EggplantRecorderApp.swift
-  AppState.swift                # phase + pendingArea / pendingWindow
+  AppState.swift                    # coordinator: phase + pendingArea / pendingWindow
+  Models/
+    RecordingKind.swift
+    RecordingConfig.swift
   Recording/
-    CaptureSession.swift
+    CaptureSession.swift            # SCK stream + AVAssetWriter lifecycle
+    CaptureFilter.swift / CaptureAudio.swift / CaptureTiming.swift / CaptureError.swift
     CaptureSources.swift
     CapturePermissions.swift
     RecorderController.swift
     WindowHitTester.swift
   UI/
-    StatusItem/
-    OptionsBar/
-    AreaSelection/
-    WindowSelection/
-    FilesList/
+    Shared/                         # SelectionChrome, NSScreen+DisplayID, VisualEffectBackground
+    StatusItem/                     # tray + RecordingControlBarView
+    OptionsBar/                     # Controller, Model, View, Columns, Controls
+    AreaSelection/                  # pick overlay + in-recording chrome (border / mini bar)
+    WindowSelection/                # hover-pick controller + overlay
+    FilesList/                      # window + table + cells
   Services/
     RecordingsLibrary.swift
     MediaProbe.swift

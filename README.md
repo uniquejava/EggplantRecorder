@@ -42,16 +42,19 @@ Scheme: `EggplantRecorder`. First Screen Recording / Microphone grant may need a
 
 ```text
 EggplantRecorder/
-  AppState.swift
-  Recording/            # ScreenCaptureKit + writer (+ area, WindowHitTester)
-  UI/StatusItem/        # tray glyph + Pause/Stop/timer
-  UI/OptionsBar/        # OMI glass panel (260/260/100, bottom +16pt)
-  UI/AreaSelection/     # dim overlay + Continue bar
-  UI/WindowSelection/   # hover window highlight → click
-  UI/FilesList/         # library window (~800pt)
-  Services/             # library, thumbnails, Quick Look
+  AppState.swift            # flow coordinator
+  Models/                   # RecordingKind, RecordingConfig
+  Recording/                # ScreenCaptureKit + writer, filter/audio/timing
+  UI/Shared/                # dashed chrome, displayID, glass backdrop
+  UI/StatusItem/            # tray glyph + Pause/Stop/timer
+  UI/OptionsBar/            # OMI glass panel (260/260/100, bottom +16pt)
+  UI/AreaSelection/         # dim overlay + handles; in-recording dashed frame + mini bar
+  UI/WindowSelection/       # hover window highlight → click
+  UI/FilesList/             # library window (~800pt)
+  Services/                 # library, thumbnails, Quick Look
 ```
 
+Code map for agents: [AGENTS.md](AGENTS.md). Product behavior: [docs/product.md](docs/product.md).
 ## Manual check
 
 1. Cold start → **only** menu bar icon (no Files List).
