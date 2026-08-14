@@ -39,6 +39,7 @@
   │    ├─ Record Screen（全屏）
   │    ├─ Record Area（框选 + 底部参数条同时出现）
   │    ├─ Record Window（悬停虚线框 → 点击 → 参数条）
+  │    ├─ Record Window Area（悬停点选窗口 → 用窗口位置预设 Area → 同 Record Area）
   │    ├─ Show Files List
   │    └─ Quit
   │
@@ -80,7 +81,7 @@
 | Timer | `HH:MM:SS`，仅累计「在录」时间 |
 
 - **Screen / Window：** 自定义 `NSStatusItem` 视图（菜单栏控制条）。
-- **Area：** 所选区域保留淡蓝虚线框；框下方 OMI 深色 mini 面板（计时 + 圆形按钮：Annotate 占位 / Stop / Pause / Restart / Discard）。菜单栏控制条仍可用作备份。
+- **Area:** 所选区域保留淡蓝虚线框；框下方紧凑深色 mini 面板（计时 + 圆形按钮：Annotate 占位 / Stop / Pause / Restart / Discard）。菜单栏控制条仍可用作备份。
 
 ### 3.3 底部参数条（实心深灰工具板）
 
@@ -119,7 +120,7 @@
 3. System audio 与 Microphone 为 **两条独立音轨**
 4. Mic：开录前申请 Microphone TCC；Hardened Runtime 需 `device.audio-input`
 5. Pause：跳过写 sample，压缩时间线（无冻帧）
-6. Area：`sourceRect`；Window：悬停点选 → `window:ID`
+6. Area：`sourceRect`；Window：悬停点选 → `window:ID`；Window Area：悬停点选 → 窗口 frame 预设 Area（之后同 Area）
 
 ### 4.3 权限
 
@@ -130,8 +131,8 @@
 ## 5. 验收清单
 
 1. 冷启动：只有菜单栏图标。
-2. 菜单：Screen / Area / Window / Files List / Quit。
-3. Screen → 参数条 → Record；Area → 框选同时出参数条 → Record；Window → 悬停 → 点击 → 参数条。
+2. 菜单：Screen / Area / Window / Window Area / Files List / Quit。
+3. Screen → 参数条 → Record；Area → 框选同时出参数条 → Record；Window → 悬停 → 点击 → 参数条；Window Area → 悬停点选 → Area 框（窗口位置）+ 参数条。
 4. 录制中：Pause + Stop + 计时；Area 有虚线框 + mini 面板；Pause 后计时停、文件无冻帧。
 5. Stop → 库目录出现 MP4 → Files List 打开并高亮。
 6. Preview / Finder / Delete / Play 可用；Edit 可二期。

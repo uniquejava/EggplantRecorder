@@ -14,7 +14,6 @@ final class AreaOverlayWindow: NSWindow {
     init(screen: NSScreen) {
         let size = screen.frame.size
         canvas = AreaSelectionCanvas(frame: NSRect(origin: .zero, size: size))
-        canvas.toolbarReserveHeight = AreaSelectionController.optionsReserveHeight
 
         super.init(
             contentRect: screen.frame,

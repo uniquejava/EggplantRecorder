@@ -9,7 +9,10 @@ enum SelectionChrome {
         ctx.setStrokeColor(blue.cgColor)
         ctx.setLineWidth(lineWidth)
         ctx.setLineDash(phase: 0, lengths: [6, 5])
-        ctx.stroke(rect.insetBy(dx: 1, dy: 1))
+        // Outer stroke: path is half a line-width outside the rect so the dash
+        // frames the selection without covering captured pixels (and stays
+        // outside SCK sourceRect even if overlay exclusion glitches).
+        ctx.stroke(rect.insetBy(dx: -lineWidth / 2, dy: -lineWidth / 2))
         ctx.restoreGState()
     }
 }

@@ -11,20 +11,18 @@ final class AreaSelectionController {
     private var onCancel: (() -> Void)?
     private var escapeMonitor: Any?
 
-    /// Space reserved at the bottom so handles stay above the options panel (~186 + 16pt).
-    static let optionsReserveHeight: CGFloat = 220
-
     var isVisible: Bool { !overlayWindows.isEmpty }
 
+    /// - Parameter preset: Optional display-local SCK `sourceRect` (e.g. from Window Area pick).
+    ///   Wins over the remembered last-area when provided.
     func show(
+        preset: (displayID: CGDirectDisplayID, sourceRect: CGRect)? = nil,
         onSelectionChanged: @escaping (AreaSelectionResult?) -> Void,
         onCancel: @escaping () -> Void
     ) {
         hide()
         self.onSelectionChanged = onSelectionChanged
         self.onCancel = onCancel
-
-        let remembered = AreaSelectionMemory.load()
 
         for screen in NSScreen.screens {
             let window = AreaOverlayWindow(screen: screen)
@@ -33,21 +31,24 @@ final class AreaSelectionController {
             overlayWindows.append(window)
         }
 
-        if let remembered,
-           let match = overlayWindows.first(where: { $0.screen?.displayID == remembered.displayID }),
-           match.restoreSelection(sourceRect: remembered.sourceRect)
+        let initial = preset ?? AreaSelectionMemory.load()
+
+        if let initial,
+           let match = overlayWindows.first(where: { $0.screen?.displayID == initial.displayID }),
+           match.restoreSelection(sourceRect: initial.sourceRect)
         {
-            activeScreenID = remembered.displayID
+            activeScreenID = initial.displayID
             for other in overlayWindows where other !== match {
                 other.clearSelection()
             }
             match.makeKeyAndOrderFront(nil)
-        } else if let main = overlayWindows.first(where: { $0.screen == NSScreen.main })
+        } else if let preferred = overlayWindows.first(where: { $0.screen?.displayID == preset?.displayID })
+            ?? overlayWindows.first(where: { $0.screen == NSScreen.main })
             ?? overlayWindows.first
         {
-            activeScreenID = main.screen?.displayID
-            main.activateDefaultSelection()
-            main.makeKeyAndOrderFront(nil)
+            activeScreenID = preferred.screen?.displayID
+            preferred.activateDefaultSelection()
+            preferred.makeKeyAndOrderFront(nil)
         }
 
         NSApp.activate(ignoringOtherApps: true)

@@ -27,7 +27,7 @@ Product requirements: [`docs/product.md`](docs/product.md).
 
 1. Read this file + skim `docs/product.md` (flow + acceptance).
 2. Prefer launching `build/EggplantRecorder.app` (rebuild recipe below). Avoid `/Applications/EggplantRecorder.app` (often stale).
-3. Capture: ScreenCaptureKit dual audio + pause timeline; Area = `sourceRect`; Window = CGWindowList hit-test → `window:ID`.
+3. Capture: ScreenCaptureKit dual audio + pause timeline; Area = `sourceRect`; Window = CGWindowList hit-test → `window:ID`; Window Area = hit-test → Area preset.
 4. Commit only if asked (`usegmail` when they want that author).
 
 ### Suggested next work
@@ -43,12 +43,13 @@ Product requirements: [`docs/product.md`](docs/product.md).
 ## What’s implemented
 
 - **Idle tray:** custom `NSStatusItem` + `RecorderGlyph`.
-- **Menu:** Record Screen / Area / Window / Show Files List / Quit.
+- **Menu:** Record Screen / Area / Window / Window Area / Show Files List / Quit.
 - **Area:** dim overlay + pale-blue dashed border + handles → OMI options bar (selection stays) → Record → **in-recording** dashed frame + mini control bar below selection → `Area-….mp4`. Last area rect remembered (UserDefaults).
 - **Window:** hover → blue dashed highlight → click → Options (no window dropdown). Esc cancels.
+- **Window Area:** same hover-pick as Window, then continues as Area with the window frame as the preset selection (editable; capture is `sourceRect`, not `window:ID`).
 - **Options bar:** bottom-center `NSPanel` (**16pt** above screen bottom), ~**224 / 224 / 76** × ~**186**, solid dark (no glass), draggable. Working: display picker (Screen), Mic, System Sound, cursor. Placeholders disabled. Grant / Relaunch copy when needed.
 - **Capture:** screen/window/area, exclude self PID, dual audio tracks, pause compresses timeline.
-- **Recording controls:** menu-bar Pause / Stop / `HH:MM:SS`; Area also gets floating OMI mini bar (Restart / Discard; Annotate stub).
+- **Recording controls:** menu-bar Pause / Stop / `HH:MM:SS`; Area also gets compact solid mini bar (Restart / Discard; Annotate stub).
 - **Stop →** library MP4 → Files List (800pt), Quick Look + Play, OMI context menu.
 - **Launch:** tray only on cold start.
 - **Mic:** entitlement `com.apple.security.device.audio-input` under Hardened Runtime.
@@ -131,4 +132,4 @@ open EggplantRecorder.xcodeproj
 
 ## One-liner for the next agent
 
-**Tray → Screen / Area(live selection + options → dashed frame + mini bar while recording) / Window(hover-pick) → OMI options → record → Files List is done.** Next: in-app Edit/export. Do not regress Area+options z-order, area recording chrome click-through, options checkbox hit-testing, bottom-16pt panel placement, mic entitlement, or Quick Look rules.
+**Tray → Screen / Area(live selection + options → dashed frame + mini bar while recording) / Window(hover-pick) / Window Area(hover-pick → Area preset) → OMI options → record → Files List is done.** Next: in-app Edit/export. Do not regress Area+options z-order, area recording chrome click-through, options checkbox hit-testing, bottom-16pt panel placement, mic entitlement, or Quick Look rules.

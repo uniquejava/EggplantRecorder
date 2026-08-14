@@ -98,6 +98,8 @@ final class StatusItemController: NSObject {
         let menu = NSMenu()
         menu.addItem(withTitle: "Record Screen", action: #selector(recordScreen), keyEquivalent: "")
         menu.addItem(withTitle: "Record Area", action: #selector(recordArea), keyEquivalent: "")
+        menu.addItem(withTitle: "Record Window Area", action: #selector(recordWindowArea), keyEquivalent: "")
+        menu.addItem(.separator())
         menu.addItem(withTitle: "Record Window", action: #selector(recordWindow), keyEquivalent: "")
         menu.addItem(.separator())
         menu.addItem(withTitle: "Show Files List", action: #selector(showFiles), keyEquivalent: "")
@@ -119,6 +121,10 @@ final class StatusItemController: NSObject {
 
     @objc private func recordWindow() {
         appState?.showWindowSelection()
+    }
+
+    @objc private func recordWindowArea() {
+        appState?.showWindowAreaSelection()
     }
 
     @objc private func showFiles() {

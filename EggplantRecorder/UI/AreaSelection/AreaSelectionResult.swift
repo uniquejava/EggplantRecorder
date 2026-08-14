@@ -1,3 +1,4 @@
+import AppKit
 import CoreGraphics
 import Foundation
 
@@ -7,6 +8,37 @@ struct AreaSelectionResult {
     let sourceRect: CGRect
     let pixelWidth: Int
     let pixelHeight: Int
+
+    /// Convert a Cocoa-global window frame into a single-display SCK area preset
+    /// (largest intersecting screen, clamped to that screen).
+    static func presetFromWindowFrame(_ cocoaGlobal: CGRect) -> (displayID: CGDirectDisplayID, sourceRect: CGRect)? {
+        guard cocoaGlobal.width >= 40, cocoaGlobal.height >= 40 else { return nil }
+
+        let screen = NSScreen.screens
+            .map { screen -> (NSScreen, CGFloat) in
+                let overlap = screen.frame.intersection(cocoaGlobal)
+                let area = overlap.isNull ? 0 : overlap.width * overlap.height
+                return (screen, area)
+            }
+            .filter { $0.1 > 0 }
+            .max(by: { $0.1 < $1.1 })?
+            .0
+            ?? NSScreen.main
+        guard let screen else { return nil }
+
+        let clipped = cocoaGlobal.intersection(screen.frame)
+        guard !clipped.isNull, clipped.width >= 40, clipped.height >= 40 else { return nil }
+
+        let sf = screen.frame
+        let source = CGRect(
+            x: clipped.minX - sf.minX,
+            y: sf.maxY - clipped.maxY,
+            width: clipped.width,
+            height: clipped.height
+        ).integral
+        guard source.width >= 40, source.height >= 40 else { return nil }
+        return (screen.displayID, source)
+    }
 }
 
 /// Remembers the last area rect across launches (UserDefaults).

@@ -1,6 +1,7 @@
 import AppKit
 
-/// OMI: timer + circular buttons. Cancel arms a confirm chip, then discards on second click.
+/// Compact timer + circular controls during Area recording.
+/// Cancel arms a confirm chip, then discards on second click.
 final class AreaRecordingMiniBarView: NSView {
     var onPause: (() -> Void)?
     var onStop: (() -> Void)?
@@ -15,18 +16,20 @@ final class AreaRecordingMiniBarView: NSView {
     private let pauseButton = NSButton()
     private let restartButton = NSButton()
     private let cancelButton = NSButton()
-    private let effect = NSVisualEffectView()
     private let confirmBanner = CancelConfirmBannerView()
 
     private var cancelArmed = false
     private var armResetWorkItem: DispatchWorkItem?
 
-    private static let barHeight: CGFloat = 44
-    private static let bannerGap: CGFloat = 6
-    private static let bannerHeight: CGFloat = 28
-    private static let bannerWidth: CGFloat = 372
-    private static let buttonSize: CGFloat = 30
-    private static let barWidth: CGFloat = 292
+    private static let barHeight: CGFloat = 34
+    private static let bannerGap: CGFloat = 5
+    private static let bannerHeight: CGFloat = 24
+    private static let bannerWidth: CGFloat = 320
+    private static let buttonSize: CGFloat = 24
+    private static let barWidth: CGFloat = 236
+    private static let cornerRadius: CGFloat = 8
+    /// Style B charcoal — matches the options panel.
+    private static let panelFill = NSColor(srgbRed: 0.173, green: 0.180, blue: 0.200, alpha: 1)
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -43,26 +46,18 @@ final class AreaRecordingMiniBarView: NSView {
         barContainer.translatesAutoresizingMaskIntoConstraints = false
         addSubview(barContainer)
 
-        effect.material = .hudWindow
-        effect.blendingMode = .behindWindow
-        effect.state = .active
-        effect.wantsLayer = true
-        effect.layer?.cornerRadius = 22
-        effect.layer?.masksToBounds = true
-        effect.translatesAutoresizingMaskIntoConstraints = false
-        barContainer.addSubview(effect)
+        let fill = NSView()
+        fill.wantsLayer = true
+        fill.layer?.cornerRadius = Self.cornerRadius
+        fill.layer?.masksToBounds = true
+        fill.layer?.backgroundColor = Self.panelFill.cgColor
+        fill.layer?.borderWidth = 1
+        fill.layer?.borderColor = NSColor.white.withAlphaComponent(0.08).cgColor
+        fill.translatesAutoresizingMaskIntoConstraints = false
+        barContainer.addSubview(fill)
 
-        let border = NSView()
-        border.wantsLayer = true
-        border.layer?.cornerRadius = 22
-        border.layer?.borderWidth = 1
-        border.layer?.borderColor = NSColor.white.withAlphaComponent(0.18).cgColor
-        border.translatesAutoresizingMaskIntoConstraints = false
-        border.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.35).cgColor
-        barContainer.addSubview(border)
-
-        timerLabel.font = NSFont.monospacedDigitSystemFont(ofSize: 13, weight: .semibold)
-        timerLabel.textColor = .white
+        timerLabel.font = NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .semibold)
+        timerLabel.textColor = NSColor(srgbRed: 0.910, green: 0.918, blue: 0.929, alpha: 1)
         timerLabel.alignment = .left
         timerLabel.isEditable = false
         timerLabel.isBezeled = false
@@ -108,9 +103,9 @@ final class AreaRecordingMiniBarView: NSView {
             timerLabel, annotateButton, stopButton, pauseButton, restartButton, cancelButton,
         ])
         stack.orientation = .horizontal
-        stack.spacing = 8
+        stack.spacing = 6
         stack.alignment = .centerY
-        stack.edgeInsets = NSEdgeInsets(top: 7, left: 14, bottom: 7, right: 10)
+        stack.edgeInsets = NSEdgeInsets(top: 5, left: 10, bottom: 5, right: 8)
         stack.translatesAutoresizingMaskIntoConstraints = false
         barContainer.addSubview(stack)
 
@@ -132,14 +127,10 @@ final class AreaRecordingMiniBarView: NSView {
             barContainer.widthAnchor.constraint(equalToConstant: Self.barWidth),
             barContainer.heightAnchor.constraint(equalToConstant: Self.barHeight),
 
-            effect.leadingAnchor.constraint(equalTo: barContainer.leadingAnchor),
-            effect.trailingAnchor.constraint(equalTo: barContainer.trailingAnchor),
-            effect.topAnchor.constraint(equalTo: barContainer.topAnchor),
-            effect.bottomAnchor.constraint(equalTo: barContainer.bottomAnchor),
-            border.leadingAnchor.constraint(equalTo: barContainer.leadingAnchor),
-            border.trailingAnchor.constraint(equalTo: barContainer.trailingAnchor),
-            border.topAnchor.constraint(equalTo: barContainer.topAnchor),
-            border.bottomAnchor.constraint(equalTo: barContainer.bottomAnchor),
+            fill.leadingAnchor.constraint(equalTo: barContainer.leadingAnchor),
+            fill.trailingAnchor.constraint(equalTo: barContainer.trailingAnchor),
+            fill.topAnchor.constraint(equalTo: barContainer.topAnchor),
+            fill.bottomAnchor.constraint(equalTo: barContainer.bottomAnchor),
             stack.leadingAnchor.constraint(equalTo: barContainer.leadingAnchor),
             stack.trailingAnchor.constraint(equalTo: barContainer.trailingAnchor),
             stack.topAnchor.constraint(equalTo: barContainer.topAnchor),
@@ -160,7 +151,7 @@ final class AreaRecordingMiniBarView: NSView {
             restartButton.heightAnchor.constraint(equalToConstant: Self.buttonSize),
             cancelButton.widthAnchor.constraint(equalToConstant: Self.buttonSize),
             cancelButton.heightAnchor.constraint(equalToConstant: Self.buttonSize),
-            timerLabel.widthAnchor.constraint(greaterThanOrEqualToConstant: 64),
+            timerLabel.widthAnchor.constraint(greaterThanOrEqualToConstant: 56),
         ])
     }
 
@@ -183,7 +174,7 @@ final class AreaRecordingMiniBarView: NSView {
             NSColor.white.setFill()
             NSBezierPath(ovalIn: rect).fill()
 
-            let config = NSImage.SymbolConfiguration(pointSize: 12, weight: .semibold)
+            let config = NSImage.SymbolConfiguration(pointSize: 10, weight: .semibold)
                 .applying(NSImage.SymbolConfiguration(paletteColors: [tint]))
             guard let symbolImage = NSImage(systemSymbolName: symbol, accessibilityDescription: nil)?
                 .withSymbolConfiguration(config)
@@ -210,8 +201,9 @@ final class AreaRecordingMiniBarView: NSView {
             NSColor.white.setFill()
             NSBezierPath(ovalIn: rect).fill()
             NSColor.systemRed.setFill()
-            let square = NSRect(x: 9, y: 9, width: 12, height: 12)
-            NSBezierPath(roundedRect: square, xRadius: 2.5, yRadius: 2.5).fill()
+            let inset: CGFloat = 7
+            let square = NSRect(x: inset, y: inset, width: side - inset * 2, height: side - inset * 2)
+            NSBezierPath(roundedRect: square, xRadius: 2, yRadius: 2).fill()
             return true
         }
     }
@@ -282,7 +274,6 @@ final class AreaRecordingMiniBarView: NSView {
     }
 }
 
-/// OMI-style light confirm chip under the Cancel button.
 final class CancelConfirmBannerView: NSView {
     private let label = NSTextField(wrappingLabelWithString:
         "Cancel will discard the recorded content, click again to confirm"
@@ -296,7 +287,7 @@ final class CancelConfirmBannerView: NSView {
         layer?.borderWidth = 1
         layer?.borderColor = NSColor.black.withAlphaComponent(0.35).cgColor
 
-        label.font = NSFont.systemFont(ofSize: 11, weight: .semibold)
+        label.font = NSFont.systemFont(ofSize: 10, weight: .semibold)
         label.textColor = .black
         label.alignment = .left
         label.isEditable = false
@@ -308,8 +299,8 @@ final class CancelConfirmBannerView: NSView {
         addSubview(label)
 
         NSLayoutConstraint.activate([
-            label.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 10),
-            label.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -10),
+            label.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
+            label.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -8),
             label.centerYAnchor.constraint(equalTo: centerYAnchor),
         ])
     }

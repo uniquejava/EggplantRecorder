@@ -7,8 +7,6 @@ enum AreaHandlePosition: CaseIterable {
 final class AreaSelectionCanvas: NSView {
     var onBeginEditing: (() -> Void)?
     var onSelectionChanged: (() -> Void)?
-    /// Keep selection / handles above the options panel strip.
-    var toolbarReserveHeight: CGFloat = 0
 
     private(set) var selectionInWindowCoords: CGRect?
     private var dragKind: DragKind = .none
@@ -27,12 +25,8 @@ final class AreaSelectionCanvas: NSView {
     override var isFlipped: Bool { false }
     override var acceptsFirstResponder: Bool { true }
 
-    private var usableBounds: CGRect {
-        bounds.divided(atDistance: toolbarReserveHeight, from: .minYEdge).remainder
-    }
-
     func installDefaultSelection() {
-        let area = usableBounds
+        let area = bounds
         let insetX = area.width * 0.18
         let insetY = area.height * 0.18
         selectionInWindowCoords = area.insetBy(dx: insetX, dy: insetY)
@@ -52,7 +46,7 @@ final class AreaSelectionCanvas: NSView {
         let clamped = clamp(cocoa)
         guard clamped.width >= minSize, clamped.height >= minSize else { return false }
         // Reject if the rect barely fits / was for a very different display size.
-        let overlap = clamped.intersection(usableBounds)
+        let overlap = clamped.intersection(bounds)
         guard overlap.width >= minSize, overlap.height >= minSize else { return false }
         selectionInWindowCoords = clamped
         needsDisplay = true
@@ -63,14 +57,6 @@ final class AreaSelectionCanvas: NSView {
     func clearSelection() {
         selectionInWindowCoords = nil
         needsDisplay = true
-    }
-
-    override func hitTest(_ point: NSPoint) -> NSView? {
-        // Leave the bottom strip for the options NSPanel above us.
-        if point.y < toolbarReserveHeight {
-            return nil
-        }
-        return super.hitTest(point)
     }
 
     override func draw(_ dirtyRect: NSRect) {
@@ -180,7 +166,7 @@ final class AreaSelectionCanvas: NSView {
     override func mouseUp(with event: NSEvent) {
         if let selection = selectionInWindowCoords, selection.width < minSize || selection.height < minSize {
             var r = selection
-            let area = usableBounds
+            let area = bounds
             if r.width < minSize {
                 r.size.width = minSize
                 r.origin.x = min(max(area.minX, r.midX - minSize / 2), area.maxX - minSize)
@@ -197,7 +183,7 @@ final class AreaSelectionCanvas: NSView {
     }
 
     private func clamp(_ rect: CGRect) -> CGRect {
-        let area = usableBounds
+        let area = bounds
         var r = rect
         r.size.width = max(minSize, min(r.width, area.width))
         r.size.height = max(minSize, min(r.height, area.height))

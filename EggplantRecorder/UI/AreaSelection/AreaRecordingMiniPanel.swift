@@ -7,7 +7,7 @@ final class AreaRecordingMiniPanel: NSPanel {
     init(appState: AppState?) {
         self.appState = appState
         super.init(
-            contentRect: NSRect(x: 0, y: 0, width: 292, height: 44),
+            contentRect: NSRect(x: 0, y: 0, width: 236, height: 34),
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false

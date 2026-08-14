@@ -73,7 +73,7 @@ final class AppState: ObservableObject {
         optionsBar.show(mode: mode, anchorRect: anchorRect)
     }
 
-    func showAreaSelection() {
+    func showAreaSelection(preset: (displayID: CGDirectDisplayID, sourceRect: CGRect)? = nil) {
         guard phase != .recording else { return }
         optionsBar.hide()
         windowSelection.hide()
@@ -82,6 +82,7 @@ final class AppState: ObservableObject {
         phase = .configuring
         optionsMode = .area
         areaSelection.show(
+            preset: preset,
             onSelectionChanged: { [weak self] result in
                 guard let self else { return }
                 self.pendingArea = result
@@ -114,6 +115,31 @@ final class AppState: ObservableObject {
             onCancel: { [weak self] in
                 guard let self else { return }
                 self.pendingWindow = nil
+                self.phase = .idle
+            }
+        )
+    }
+
+    /// Hover-pick a window, then continue as Area with that window’s frame as the selection.
+    func showWindowAreaSelection() {
+        guard phase != .recording else { return }
+        optionsBar.hide()
+        areaSelection.hide()
+        pendingArea = nil
+        pendingWindow = nil
+        phase = .configuring
+        windowSelection.show(
+            onComplete: { [weak self] result in
+                guard let self else { return }
+                guard let preset = AreaSelectionResult.presetFromWindowFrame(result.hit.frame) else {
+                    self.lastErrorMessage = "Could not use that window as an area."
+                    self.phase = .idle
+                    return
+                }
+                self.showAreaSelection(preset: preset)
+            },
+            onCancel: { [weak self] in
+                guard let self else { return }
                 self.phase = .idle
             }
         )
