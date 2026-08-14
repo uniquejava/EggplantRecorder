@@ -9,6 +9,42 @@ struct AreaSelectionResult {
     let pixelHeight: Int
 }
 
+/// Remembers the last area rect across launches (UserDefaults).
+enum AreaSelectionMemory {
+    private static let key = "click.yinsb.eggplantrecorder.lastAreaSelection"
+
+    private struct Stored: Codable {
+        var displayID: UInt32
+        var x: Double
+        var y: Double
+        var width: Double
+        var height: Double
+    }
+
+    static func save(_ result: AreaSelectionResult) {
+        let stored = Stored(
+            displayID: result.displayID,
+            x: result.sourceRect.origin.x,
+            y: result.sourceRect.origin.y,
+            width: result.sourceRect.size.width,
+            height: result.sourceRect.size.height
+        )
+        guard let data = try? JSONEncoder().encode(stored) else { return }
+        UserDefaults.standard.set(data, forKey: key)
+    }
+
+    static func load() -> (displayID: CGDirectDisplayID, sourceRect: CGRect)? {
+        guard let data = UserDefaults.standard.data(forKey: key),
+              let stored = try? JSONDecoder().decode(Stored.self, from: data),
+              stored.width >= 40, stored.height >= 40
+        else { return nil }
+        return (
+            CGDirectDisplayID(stored.displayID),
+            CGRect(x: stored.x, y: stored.y, width: stored.width, height: stored.height)
+        )
+    }
+}
+
 /// Full-screen dim overlays with a live selection. Options bar is a separate higher-level
 /// `NSPanel` (same OMI glass UI as Screen / Window) — no Cancel/Continue chrome here.
 @MainActor
@@ -32,19 +68,32 @@ final class AreaSelectionController {
         self.onSelectionChanged = onSelectionChanged
         self.onCancel = onCancel
 
+        let remembered = AreaSelectionMemory.load()
+
         for screen in NSScreen.screens {
             let window = AreaOverlayWindow(screen: screen)
             window.selectionDelegate = self
             window.orderFrontRegardless()
             overlayWindows.append(window)
-            if screen == NSScreen.main {
-                activeScreenID = screen.displayID
-                window.activateDefaultSelection()
-            }
         }
 
-        overlayWindows.first(where: { $0.screen?.displayID == activeScreenID })?
-            .makeKeyAndOrderFront(nil)
+        if let remembered,
+           let match = overlayWindows.first(where: { $0.screen?.displayID == remembered.displayID }),
+           match.restoreSelection(sourceRect: remembered.sourceRect)
+        {
+            activeScreenID = remembered.displayID
+            for other in overlayWindows where other !== match {
+                other.clearSelection()
+            }
+            match.makeKeyAndOrderFront(nil)
+        } else if let main = overlayWindows.first(where: { $0.screen == NSScreen.main })
+            ?? overlayWindows.first
+        {
+            activeScreenID = main.screen?.displayID
+            main.activateDefaultSelection()
+            main.makeKeyAndOrderFront(nil)
+        }
+
         NSApp.activate(ignoringOtherApps: true)
         publishSelection()
 
@@ -82,7 +131,11 @@ final class AreaSelectionController {
     }
 
     private func publishSelection() {
-        onSelectionChanged?(currentResult())
+        let result = currentResult()
+        if let result {
+            AreaSelectionMemory.save(result)
+        }
+        onSelectionChanged?(result)
     }
 }
 
@@ -164,6 +217,12 @@ final class AreaOverlayWindow: NSWindow {
         canvas.installDefaultSelection()
     }
 
+    /// Restore a remembered SCK `sourceRect` (top-left, display-local). Returns false if unusable.
+    @discardableResult
+    func restoreSelection(sourceRect: CGRect) -> Bool {
+        canvas.restoreSelection(sourceRect: sourceRect)
+    }
+
     func clearSelection() {
         canvas.clearSelection()
     }
@@ -241,6 +300,26 @@ final class AreaSelectionCanvas: NSView {
         selectionInWindowCoords = area.insetBy(dx: insetX, dy: insetY)
         needsDisplay = true
         onSelectionChanged?()
+    }
+
+    /// `sourceRect` is top-left origin in display-local points (same as SCK).
+    @discardableResult
+    func restoreSelection(sourceRect: CGRect) -> Bool {
+        let cocoa = CGRect(
+            x: sourceRect.minX,
+            y: bounds.height - sourceRect.minY - sourceRect.height,
+            width: sourceRect.width,
+            height: sourceRect.height
+        )
+        let clamped = clamp(cocoa)
+        guard clamped.width >= minSize, clamped.height >= minSize else { return false }
+        // Reject if the rect barely fits / was for a very different display size.
+        let overlap = clamped.intersection(usableBounds)
+        guard overlap.width >= minSize, overlap.height >= minSize else { return false }
+        selectionInWindowCoords = clamped
+        needsDisplay = true
+        onSelectionChanged?()
+        return true
     }
 
     func clearSelection() {

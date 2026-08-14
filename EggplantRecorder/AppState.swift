@@ -25,12 +25,17 @@ final class AppState: ObservableObject {
     let filesList = FilesListController()
     let statusItem = StatusItemController()
     let areaSelection = AreaSelectionController()
+    let areaRecordingChrome = AreaRecordingChromeController()
     let windowSelection = WindowSelectionController()
 
-    /// Set after area overlay Continue; consumed when OptionsBar records.
+    /// Set while configuring area; consumed when OptionsBar records.
     private(set) var pendingArea: AreaSelectionResult?
     /// Set after window pick; consumed when OptionsBar records.
     private(set) var pendingWindow: WindowSelectionResult?
+
+    /// Kept while recording so area chrome / restart can reuse the same rect + settings.
+    private var activeRecordingConfig: RecordingConfig?
+    private var activeArea: AreaSelectionResult?
 
     private var elapsedTimer: Timer?
     private var recordingAnchor = Date()
@@ -51,6 +56,7 @@ final class AppState: ObservableObject {
         statusItem.install(appState: self)
         optionsBar.configure(appState: self)
         filesList.configure(appState: self)
+        areaRecordingChrome.configure(appState: self)
         Task { await refreshRecordings() }
     }
 
@@ -128,7 +134,29 @@ final class AppState: ObservableObject {
         do {
             try RecordingsLibrary.ensureDirectory()
             let output = RecordingsLibrary.makeOutputURL(kind: config.kind)
+            // Capture area before clearing pending — needed for in-recording chrome.
+            let areaForChrome: AreaSelectionResult? = {
+                if config.kind == .area {
+                    if let pending = pendingArea { return pending }
+                    if let active = activeArea { return active }
+                    if let rect = config.areaSourceRect,
+                       let displayID = Self.displayID(from: config.sourceID),
+                       let w = config.areaPixelWidth,
+                       let h = config.areaPixelHeight
+                    {
+                        return AreaSelectionResult(
+                            displayID: displayID,
+                            sourceRect: rect,
+                            pixelWidth: w,
+                            pixelHeight: h
+                        )
+                    }
+                }
+                return nil
+            }()
             try await recorder.start(config: config, outputURL: output)
+            activeRecordingConfig = config
+            activeArea = areaForChrome
             pendingArea = nil
             pendingWindow = nil
             areaSelection.hide()
@@ -141,6 +169,11 @@ final class AppState: ObservableObject {
             pauseBeganAt = nil
             startElapsedTimer()
             statusItem.enterRecordingMode()
+            if let areaForChrome {
+                areaRecordingChrome.show(area: areaForChrome)
+            } else {
+                areaRecordingChrome.hide()
+            }
         } catch {
             lastErrorMessage = error.localizedDescription
             optionsBar.showError(error.localizedDescription)
@@ -162,15 +195,19 @@ final class AppState: ObservableObject {
             isPaused = true
         }
         statusItem.refreshRecordingControls()
+        areaRecordingChrome.reload()
     }
 
     func stopRecording() async {
         guard phase == .recording else { return }
         stopElapsedTimer()
+        areaRecordingChrome.hide()
         do {
             let path = try await recorder.stop()
             phase = .idle
             isPaused = false
+            activeRecordingConfig = nil
+            activeArea = nil
             statusItem.enterIdleMode()
             highlightPath = path
             await refreshRecordings()
@@ -178,10 +215,53 @@ final class AppState: ObservableObject {
         } catch {
             phase = .idle
             isPaused = false
+            activeRecordingConfig = nil
+            activeArea = nil
             statusItem.enterIdleMode()
             lastErrorMessage = error.localizedDescription
             presentAlert(title: "Recording failed", message: error.localizedDescription)
         }
+    }
+
+    /// Discard the in-progress recording (delete file, no Files List).
+    func cancelRecording() async {
+        guard phase == .recording else { return }
+        stopElapsedTimer()
+        areaRecordingChrome.hide()
+        do {
+            let path = try await recorder.stop()
+            try? FileManager.default.removeItem(atPath: path)
+        } catch {
+            lastErrorMessage = error.localizedDescription
+        }
+        phase = .idle
+        isPaused = false
+        activeRecordingConfig = nil
+        activeArea = nil
+        statusItem.enterIdleMode()
+    }
+
+    /// Discard current take and start again with the same settings / area.
+    func restartRecording() async {
+        guard phase == .recording, let config = activeRecordingConfig else { return }
+        stopElapsedTimer()
+        areaRecordingChrome.hide()
+        do {
+            let path = try await recorder.stop()
+            try? FileManager.default.removeItem(atPath: path)
+        } catch {
+            lastErrorMessage = error.localizedDescription
+            phase = .idle
+            isPaused = false
+            activeRecordingConfig = nil
+            activeArea = nil
+            statusItem.enterIdleMode()
+            return
+        }
+        phase = .idle
+        isPaused = false
+        statusItem.enterIdleMode()
+        await startRecording(config: config)
     }
 
     func showFilesList() {
@@ -198,6 +278,7 @@ final class AppState: ObservableObject {
     func quit() {
         if phase == .recording {
             Task {
+                areaRecordingChrome.hide()
                 _ = try? await recorder.stop()
                 NSApp.terminate(nil)
             }
@@ -228,6 +309,7 @@ final class AppState: ObservableObject {
         let wall = Date().timeIntervalSince(recordingAnchor) - pausedAccumulated
         elapsedSeconds = max(0, wall)
         statusItem.refreshRecordingControls()
+        areaRecordingChrome.reload()
     }
 
     private func presentAlert(title: String, message: String) {
@@ -236,6 +318,12 @@ final class AppState: ObservableObject {
         alert.informativeText = message
         alert.alertStyle = .warning
         alert.runModal()
+    }
+
+    private static func displayID(from sourceID: String) -> CGDirectDisplayID? {
+        guard sourceID.hasPrefix("display:") else { return nil }
+        guard let value = UInt32(String(sourceID.dropFirst("display:".count))) else { return nil }
+        return CGDirectDisplayID(value)
     }
 }
 

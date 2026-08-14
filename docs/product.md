@@ -47,10 +47,14 @@
   │    ├─ System Sound / Microphone（+ 输入设备）/ Capture Mouse Cursor
   │    └─ 红色 Record → 开始录制，参数条（与 Area 遮罩）关闭
   │
-  ├─ 录制中 → 菜单栏控制条
+  ├─ 录制中 → 菜单栏控制条（Screen / Window）；Area 另见下方虚线框 + mini 面板
   │    ├─ Pause / Resume
   │    ├─ Stop
   │    └─ 已录时长 HH:MM:SS（不含暂停墙钟）
+  │
+  ├─ Area 录制中 → 所选区域淡蓝虚线框 + 框下方 OMI mini 控制条
+  │    ├─ 计时 / Pause / Stop / Restart / Discard（Annotate 占位）
+  │    └─ 边框与面板不进成片（excludePID）
   │
   └─ Stop → MP4 写入库目录 → 弹出 Files List
        ├─ Play / Preview / Show in Finder / Delete
@@ -67,15 +71,16 @@
 - 左键 / 右键：同一功能菜单
 - 空闲时不要显示 “Idle” 长文案
 
-### 3.2 录制中菜单栏控制条
+### 3.2 录制中控制
 
 | 控件 | 行为 |
 |------|------|
 | Pause / Resume | 圆形按钮；暂停时图标切换 |
-| Stop | 红方块停止 |
+| Stop | 红方块停止并保存 |
 | Timer | `HH:MM:SS`，仅累计「在录」时间 |
 
-实现：自定义 `NSStatusItem` 视图（不要只用纯文字凑合）。
+- **Screen / Window：** 自定义 `NSStatusItem` 视图（菜单栏控制条）。
+- **Area：** 所选区域保留淡蓝虚线框；框下方 OMI 深色 mini 面板（计时 + 圆形按钮：Annotate 占位 / Stop / Pause / Restart / Discard）。菜单栏控制条仍可用作备份。
 
 ### 3.3 底部参数条（OMI 深色毛玻璃）
 
@@ -126,7 +131,7 @@
 1. 冷启动：只有菜单栏图标。
 2. 菜单：Screen / Area / Window / Files List / Quit。
 3. Screen → 参数条 → Record；Area → 框选同时出参数条 → Record；Window → 悬停 → 点击 → 参数条。
-4. 录制中：Pause + Stop + 计时；Pause 后计时停、文件无冻帧。
+4. 录制中：Pause + Stop + 计时；Area 有虚线框 + mini 面板；Pause 后计时停、文件无冻帧。
 5. Stop → 库目录出现 MP4 → Files List 打开并高亮。
 6. Preview / Finder / Delete / Play 可用；Edit 可二期。
 7. 无权限 / 需 Relaunch 时文案正确。
