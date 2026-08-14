@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>EggplantRecorder — Options Bar styles</title>
+<style>
+  :root {
+    --desk: #5a6a7a;
+    --desk-2: #3d4a58;
+    --label: #1a1a1a;
+    --muted: #5c6570;
+    --pick: #0a84ff;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font: 13px/1.4 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+    color: var(--label);
+    background:
+      radial-gradient(1200px 600px at 50% -10%, #7a8fa3 0%, transparent 55%),
+      linear-gradient(180deg, #6b7c8c, #4a5866);
+    min-height: 100vh;
+    padding: 28px 24px 64px;
+  }
+  h1 {
+    margin: 0 0 6px;
+    font-size: 20px;
+    font-weight: 650;
+    letter-spacing: -0.02em;
+    color: #fff;
+    text-shadow: 0 1px 2px rgba(0,0,0,.25);
+  }
+  .intro {
+    color: rgba(255,255,255,.78);
+    max-width: 720px;
+    margin-bottom: 22px;
+  }
+  .intro strong { color: #fff; font-weight: 600; }
+  .grid {
+    display: grid;
+    gap: 28px;
+    grid-template-columns: 1fr;
+    max-width: 780px;
+  }
+  .card {
+    background: rgba(255,255,255,.12);
+    border: 1px solid rgba(255,255,255,.18);
+    border-radius: 14px;
+    padding: 16px 16px 20px;
+    backdrop-filter: blur(8px);
+  }
+  .card-head {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+  .card-head input {
+    margin-top: 3px;
+    width: 16px;
+    height: 16px;
+    accent-color: var(--pick);
+  }
+  .card-meta { flex: 1; }
+  .card-meta h2 {
+    margin: 0 0 2px;
+    font-size: 14px;
+    font-weight: 650;
+    color: #fff;
+  }
+  .card-meta p {
+    margin: 0;
+    font-size: 12px;
+    color: rgba(255,255,255,.72);
+  }
+  .badge {
+    font-size: 10px;
+    font-weight: 650;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    padding: 3px 7px;
+    border-radius: 999px;
+    background: rgba(0,0,0,.28);
+    color: rgba(255,255,255,.85);
+    white-space: nowrap;
+  }
+  .badge.ref { background: rgba(255,80,60,.35); }
+  .stage {
+    display: flex;
+    justify-content: center;
+    padding: 28px 12px 18px;
+    background:
+      linear-gradient(180deg, transparent, rgba(0,0,0,.12)),
+      repeating-linear-gradient(-12deg, transparent 0 10px, rgba(255,255,255,.03) 10px 11px);
+    border-radius: 10px;
+    border: 1px dashed rgba(255,255,255,.2);
+    min-height: 220px;
+    align-items: flex-end;
+  }
+
+  /* Shared panel skeleton */
+  .panel {
+    display: grid;
+    grid-template-columns: var(--lw, 200px) 1px var(--mw, 200px) 1px var(--rw, 72px);
+    width: calc(var(--lw, 200px) + var(--mw, 200px) + var(--rw, 72px) + 2px);
+    height: var(--h, 168px);
+    position: relative;
+    user-select: none;
+  }
+  .panel .col {
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: var(--gap, 5px);
+    min-width: 0;
+  }
+  .panel .col.right {
+    align-items: center;
+    padding: 10px 8px;
+  }
+  .panel .div {
+    align-self: stretch;
+    margin: 6px 0;
+  }
+  .panel .close {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 18px;
+    height: 18px;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    color: inherit;
+    opacity: .55;
+    font-size: 11px;
+    line-height: 18px;
+    cursor: default;
+  }
+  .row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 18px;
+    font-size: var(--fs, 11.5px);
+  }
+  .row .ico {
+    width: 14px;
+    text-align: center;
+    opacity: .85;
+    flex: 0 0 auto;
+    font-size: 11px;
+  }
+  .row .label {
+    flex: 1;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .row .label.dim { opacity: .45; }
+  .row .chev { opacity: .4; font-size: 9px; margin-left: 2px; }
+  .cb {
+    width: 13px;
+    height: 13px;
+    border-radius: 3px;
+    flex: 0 0 auto;
+    display: grid;
+    place-items: center;
+    font-size: 9px;
+    font-weight: 700;
+  }
+  .cb.on::after { content: "✓"; }
+  .pill {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 999px;
+  }
+  .field {
+    font: 600 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+    padding: 3px 6px;
+    border-radius: 4px;
+    min-width: 38px;
+    text-align: center;
+  }
+  .rec {
+    width: var(--rec, 44px);
+    height: var(--rec, 44px);
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    position: relative;
+  }
+  .rec::after {
+    content: "";
+    width: 62%;
+    height: 62%;
+    border-radius: 50%;
+    background: #e11d18;
+  }
+  .size-row { gap: 6px; }
+  .size-row .x { opacity: .45; font-size: 11px; }
+
+  /* ===== A: Current OMI (reference) ===== */
+  .a {
+    --lw: 260px; --mw: 260px; --rw: 100px; --h: 230px; --gap: 8px; --fs: 12.5px; --rec: 64px;
+    border-radius: 20px;
+    color: rgba(255,255,255,.92);
+    background:
+      linear-gradient(180deg, rgba(0,0,0,.28), rgba(0,0,0,.35)),
+      rgba(40,44,52,.55);
+    box-shadow:
+      0 18px 40px rgba(0,0,0,.35),
+      inset 0 0 0 1px rgba(255,255,255,.14);
+    backdrop-filter: blur(28px) saturate(1.4);
+  }
+  .a .div { background: rgba(255,255,255,.12); }
+  .a .cb { border: 1.2px solid rgba(255,255,255,.45); background: transparent; color: #fff; }
+  .a .cb.on { background: #0a85ff; border-color: transparent; }
+  .a .pill { background: rgba(255,255,255,.55); color: rgba(0,0,0,.45); }
+  .a .field {
+    background: rgba(255,255,255,.08);
+    border: 1px solid rgba(255,255,255,.1);
+    color: rgba(255,255,255,.9);
+  }
+  .a .rec {
+    box-shadow: 0 0 0 3px rgba(255,255,255,.92);
+  }
+  .a .rec::after { box-shadow: 0 2px 10px rgba(255,40,40,.45); }
+
+  /* ===== B: Solid tool panel (dark flat) ===== */
+  .b {
+    --lw: 208px; --mw: 208px; --rw: 68px; --h: 168px; --gap: 4px; --fs: 11.5px; --rec: 40px;
+    border-radius: 8px;
+    color: #e8eaed;
+    background: #2c2e33;
+    box-shadow:
+      0 10px 28px rgba(0,0,0,.32),
+      inset 0 0 0 1px rgba(255,255,255,.08);
+  }
+  .b .div { background: #3a3d44; margin: 8px 0; }
+  .b .cb { border: 1px solid #8b9099; background: #1f2125; color: #fff; border-radius: 2px; }
+  .b .cb.on { background: #3d7eff; border-color: #3d7eff; }
+  .b .pill {
+    background: #1f2125;
+    color: #9aa0a8;
+    border: 1px solid #4a4e57;
+    border-radius: 4px;
+  }
+  .b .field {
+    background: #1f2125;
+    border: 1px solid #4a4e57;
+    color: #e8eaed;
+    border-radius: 3px;
+  }
+  .b .rec {
+    box-shadow: inset 0 0 0 2px #e8eaed;
+  }
+  .b .close { opacity: .4; }
+
+  /* ===== C: System popover (light) ===== */
+  .c {
+    --lw: 210px; --mw: 210px; --rw: 70px; --h: 170px; --gap: 5px; --fs: 11.5px; --rec: 42px;
+    border-radius: 10px;
+    color: #1d1d1f;
+    background: #f2f2f4;
+    box-shadow:
+      0 12px 32px rgba(0,0,0,.28),
+      0 0 0 0.5px rgba(0,0,0,.18);
+  }
+  .c .div { background: #d8d8dc; margin: 8px 0; }
+  .c .ico { opacity: .7; }
+  .c .cb { border: 1px solid #8e8e93; background: #fff; color: #fff; border-radius: 3px; }
+  .c .cb.on { background: #007aff; border-color: #007aff; }
+  .c .pill {
+    background: #e5e5ea;
+    color: #6c6c70;
+    border-radius: 5px;
+  }
+  .c .field {
+    background: #fff;
+    border: 1px solid #c7c7cc;
+    color: #1d1d1f;
+  }
+  .c .rec {
+    box-shadow: inset 0 0 0 2.5px #1d1d1f;
+  }
+  .c .close { color: #6c6c70; }
+
+  /* ===== D: Menu material (soft dark, no glass) ===== */
+  .d {
+    --lw: 204px; --mw: 204px; --rw: 66px; --h: 164px; --gap: 4px; --fs: 11px; --rec: 38px;
+    border-radius: 6px;
+    color: #f0f0f2;
+    background: #3a3a3c;
+    box-shadow:
+      0 8px 24px rgba(0,0,0,.3),
+      inset 0 1px 0 rgba(255,255,255,.06);
+  }
+  .d .div { background: rgba(255,255,255,.1); margin: 6px 0; }
+  .d .cb { border: 1px solid rgba(255,255,255,.35); background: transparent; color: #fff; border-radius: 3px; }
+  .d .cb.on { background: #0a84ff; border-color: #0a84ff; }
+  .d .pill {
+    background: rgba(255,255,255,.12);
+    color: rgba(255,255,255,.45);
+    border-radius: 4px;
+  }
+  .d .field {
+    background: rgba(0,0,0,.25);
+    border: 1px solid rgba(255,255,255,.12);
+    color: #f0f0f2;
+  }
+  .d .rec {
+    box-shadow: inset 0 0 0 2px rgba(255,255,255,.85);
+  }
+
+  /* ===== E: Bordered utility ( densest ) ===== */
+  .e {
+    --lw: 196px; --mw: 196px; --rw: 64px; --h: 156px; --gap: 3px; --fs: 11px; --rec: 36px;
+    border-radius: 4px;
+    color: #222;
+    background: #fafafa;
+    box-shadow: 0 6px 18px rgba(0,0,0,.22);
+    outline: 1px solid #b0b0b0;
+  }
+  .e .col { padding: 8px 10px; }
+  .e .div { background: #c8c8c8; margin: 4px 0; }
+  .e .ico { opacity: .65; }
+  .e .cb { border: 1px solid #555; background: #fff; color: #fff; border-radius: 2px; width: 12px; height: 12px; }
+  .e .cb.on { background: #1a73e8; border-color: #1a73e8; }
+  .e .pill {
+    background: #eee;
+    color: #888;
+    border: 1px solid #ccc;
+    border-radius: 2px;
+    padding: 1px 6px;
+  }
+  .e .field {
+    background: #fff;
+    border: 1px solid #aaa;
+    color: #222;
+    border-radius: 2px;
+    padding: 2px 5px;
+  }
+  .e .rec {
+    box-shadow: inset 0 0 0 2px #333;
+  }
+  .e .close { color: #666; top: 4px; right: 4px; }
+
+  .dims {
+    margin-top: 10px;
+    text-align: center;
+    font-size: 11px;
+    color: rgba(255,255,255,.55);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .footer {
+    position: sticky;
+    bottom: 0;
+    margin: 28px -24px -64px;
+    padding: 14px 24px 20px;
+    background: linear-gradient(180deg, transparent, rgba(20,28,36,.92) 28%);
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+  }
+  .footer .pick {
+    color: #fff;
+    font-size: 13px;
+  }
+  .footer .pick span {
+    font-weight: 700;
+    color: #7ec8ff;
+  }
+  .footer button {
+    appearance: none;
+    border: 0;
+    border-radius: 8px;
+    padding: 8px 14px;
+    font: 600 13px/1 -apple-system, sans-serif;
+    background: #0a84ff;
+    color: #fff;
+    cursor: pointer;
+  }
+  .footer button:disabled {
+    opacity: .4;
+    cursor: default;
+  }
+</style>
+</head>
+<body>
+  <h1>Options Bar — 样式候选</h1>
+  <p class="intro">
+    布局都是 <strong>三栏（开关 | 参数 | 录制）</strong>，只改外观与密度。
+    A 是现在的 OMI 毛玻璃（对照）。B–E 更实用、更紧凑。点选一张，告诉我代号即可落地到 Swift。
+  </p>
+
+  <div class="grid">
+
+    <!-- A -->
+    <label class="card">
+      <div class="card-head">
+        <input type="radio" name="style" value="A" />
+        <div class="card-meta">
+          <h2>A · 当前 OMI 毛玻璃</h2>
+          <p>大圆角 + hud 模糊 + 大红录制钮。高级感强，也最「像 OMI」。</p>
+        </div>
+        <span class="badge ref">现状对照</span>
+      </div>
+      <div class="stage">
+        <div class="panel a" data-fill></div>
+      </div>
+      <div class="dims">≈ 622 × 230 · radius 20 · glass</div>
+    </label>
+
+    <!-- B -->
+    <label class="card">
+      <div class="card-head">
+        <input type="radio" name="style" value="B" checked />
+        <div class="card-meta">
+          <h2>B · 实心工具板（推荐试）</h2>
+          <p>不透明深灰、小圆角、无模糊。像剪辑软件的工具面板，实用、不花。</p>
+        </div>
+        <span class="badge">紧凑</span>
+      </div>
+      <div class="stage">
+        <div class="panel b" data-fill></div>
+      </div>
+      <div class="dims">≈ 486 × 168 · radius 8 · solid dark</div>
+    </label>
+
+    <!-- C -->
+    <label class="card">
+      <div class="card-head">
+        <input type="radio" name="style" value="C" />
+        <div class="card-meta">
+          <h2>C · 系统 Popover 浅色</h2>
+          <p>接近 macOS 标准浮层：浅底、细描边、系统蓝勾选。干净，偏「系统设置」。</p>
+        </div>
+        <span class="badge">紧凑</span>
+      </div>
+      <div class="stage">
+        <div class="panel c" data-fill></div>
+      </div>
+      <div class="dims">≈ 492 × 170 · radius 10 · light popover</div>
+    </label>
+
+    <!-- D -->
+    <label class="card">
+      <div class="card-head">
+        <input type="radio" name="style" value="D" />
+        <div class="card-meta">
+          <h2>D · 菜单灰（软暗、无玻璃）</h2>
+          <p>接近 AppKit menu / HUD 的实色灰，比 OMI 扁很多，仍保持暗色录制氛围。</p>
+        </div>
+        <span class="badge">紧凑</span>
+      </div>
+      <div class="stage">
+        <div class="panel d" data-fill></div>
+      </div>
+      <div class="dims">≈ 476 × 164 · radius 6 · menu solid</div>
+    </label>
+
+    <!-- E -->
+    <label class="card">
+      <div class="card-head">
+        <input type="radio" name="style" value="E" />
+        <div class="card-meta">
+          <h2>E · 工具栏白底（最密）</h2>
+          <p>直角感、描边、像老式偏好设置条。最不「产品包装」，信息密度最高。</p>
+        </div>
+        <span class="badge">最紧</span>
+      </div>
+      <div class="stage">
+        <div class="panel e" data-fill></div>
+      </div>
+      <div class="dims">≈ 458 × 156 · radius 4 · bordered light</div>
+    </label>
+
+  </div>
+
+  <div class="footer">
+    <div class="pick">当前选择：<span id="picked">B</span></div>
+    <button type="button" id="copy">复制选择说明</button>
+  </div>
+
+<script>
+const ICONS = {
+  display: "🖥",
+  mic: "🎙",
+  cam: "📷",
+  speaker: "🔊",
+  cursor: "↖︎",
+  zoom: "🔎",
+  key: "⌨️",
+  size: "▭",
+  fps: "🎞",
+  res: "▢",
+  clock: "⏱",
+  timer: "⏲",
+};
+
+function rowsLeft(variant) {
+  const dim = (t) => `<span class="label dim">${t}</span>`;
+  const on = (t, chev=false) =>
+    `<span class="label">${t}${chev ? '<span class="chev">▾</span>' : ""}</span>`;
+  const items = [
+    ["display", on("Built-in Retina", true), true, variant !== "screenless"],
+    ["mic", on("MacBook Pro Microphone", true), true],
+    ["cam", dim("PiP Camera"), false],
+    ["speaker", on("System Sound"), true],
+    ["cursor", on("Capture Mouse Cursor"), true],
+    ["zoom", dim("Click Zoom"), false],
+    ["key", dim("Catch Keyboard Event"), false],
+  ];
+  // Screen mode shows display; for compactness mock always show it
+  return items.map(([ico, label, checked]) => `
+    <div class="row">
+      <span class="ico">${ICONS[ico]}</span>
+      ${label}
+      <span class="cb ${checked ? "on" : ""}"></span>
+    </div>`).join("");
+}
+
+function rowsMid() {
+  return `
+    <div class="row size-row">
+      <span class="ico">${ICONS.size}</span>
+      <span class="label">Size</span>
+      <span class="field">1920</span>
+      <span class="x">×</span>
+      <span class="field">1080</span>
+    </div>
+    <div class="row">
+      <span class="ico">${ICONS.fps}</span>
+      <span class="label">Frame Rate</span>
+      <span class="pill">60 FPS</span>
+    </div>
+    <div class="row">
+      <span class="ico">${ICONS.res}</span>
+      <span class="label">Resolution</span>
+      <span class="pill">1080p</span>
+    </div>
+    <div class="row">
+      <span class="ico">${ICONS.clock}</span>
+      <span class="label dim">Timing Recording</span>
+    </div>
+    <div class="row">
+      <span class="ico">${ICONS.timer}</span>
+      <span class="label dim">Count Down</span>
+      <span class="pill">Off</span>
+    </div>`;
+}
+
+function fillPanel(el) {
+  el.innerHTML = `
+    <button class="close" tabindex="-1" aria-hidden="true">✕</button>
+    <div class="col">${rowsLeft()}</div>
+    <div class="div"></div>
+    <div class="col">${rowsMid()}</div>
+    <div class="div"></div>
+    <div class="col right"><div class="rec" title="Record"></div></div>
+  `;
+}
+
+document.querySelectorAll("[data-fill]").forEach(fillPanel);
+
+const picked = document.getElementById("picked");
+document.querySelectorAll('input[name="style"]').forEach((r) => {
+  r.addEventListener("change", () => { picked.textContent = r.value; });
+});
+
+document.getElementById("copy").addEventListener("click", async () => {
+  const v = document.querySelector('input[name="style"]:checked')?.value || "B";
+  const map = {
+    A: "A 当前 OMI 毛玻璃（不改）",
+    B: "B 实心工具板：深灰不透明、radius 8、约 486×168、无 blur",
+    C: "C 系统 Popover 浅色：浅底细边、radius 10、约 492×170",
+    D: "D 菜单灰：软暗实色、radius 6、约 476×164、无 glass",
+    E: "E 工具栏白底：最密、radius 4、约 458×156、描边",
+  };
+  const text = `选 Options Bar 样式：${map[v]}。布局保持三栏，占位项仍禁用。`;
+  try {
+    await navigator.clipboard.writeText(text);
+    const btn = document.getElementById("copy");
+    btn.textContent = "已复制";
+    setTimeout(() => { btn.textContent = "复制选择说明"; }, 1200);
+  } catch {
+    prompt("复制这段发给我：", text);
+  }
+});
+</script>
+</body>
+</html>

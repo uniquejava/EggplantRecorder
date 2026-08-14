@@ -2,7 +2,7 @@ import AppKit
 import CoreGraphics
 
 /// Full-screen dim overlays with a live selection. Options bar is a separate higher-level
-/// `NSPanel` (same OMI glass UI as Screen / Window) — no Cancel/Continue chrome here.
+/// `NSPanel` (same options UI as Screen / Window) — no Cancel/Continue chrome here.
 @MainActor
 final class AreaSelectionController {
     private var overlayWindows: [AreaOverlayWindow] = []
@@ -11,8 +11,8 @@ final class AreaSelectionController {
     private var onCancel: (() -> Void)?
     private var escapeMonitor: Any?
 
-    /// Space reserved at the bottom so handles stay above the options panel (~230 + 16pt).
-    static let optionsReserveHeight: CGFloat = 260
+    /// Space reserved at the bottom so handles stay above the options panel (~186 + 16pt).
+    static let optionsReserveHeight: CGFloat = 220
 
     var isVisible: Bool { !overlayWindows.isEmpty }
 

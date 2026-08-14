@@ -23,7 +23,7 @@ final class OptionsBarController {
         resizeToFit()
         positionPanelBottomCenter()
         panel?.alphaValue = 0
-        // Above area dim overlay so the glass panel stays interactive.
+        // Above area dim overlay so the panel stays interactive.
         panel?.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.statusWindow)) + 3)
         panel?.orderFrontRegardless()
         panel?.makeKeyAndOrderFront(nil)
@@ -67,7 +67,7 @@ final class OptionsBarController {
         self.model = model
         let root = OptionsBarView(model: model)
         let hosting = NSHostingView(rootView: root)
-        hosting.frame = NSRect(x: 0, y: 0, width: 622, height: 230)
+        hosting.frame = NSRect(x: 0, y: 0, width: 526, height: 186)
         self.hostingView = hosting
 
         let panel = KeyablePanel(
@@ -109,10 +109,10 @@ final class OptionsBarController {
         hostingView.layoutSubtreeIfNeeded()
         var size = hostingView.fittingSize
         if size.width < 10 || size.height < 10 {
-            size = NSSize(width: 622, height: 230)
+            size = NSSize(width: 526, height: 186)
         }
-        size.height = min(max(size.height, 230), 320)
-        size.width = min(max(size.width, 622), 680)
+        size.height = min(max(size.height, 186), 280)
+        size.width = min(max(size.width, 526), 560)
         hostingView.frame = NSRect(origin: .zero, size: size)
         panel.setContentSize(size)
         if preserveOrigin {
@@ -127,7 +127,7 @@ final class OptionsBarController {
         guard let screen else { return }
         let size = panel.frame.size
         let x = screen.frame.midX - size.width / 2
-        // OMI: ~16pt above the physical bottom edge of the display.
+        // ~16pt above the physical bottom edge of the display.
         let y = screen.frame.minY + 16
         panel.setFrameOrigin(NSPoint(x: x, y: y))
     }

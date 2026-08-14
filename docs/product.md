@@ -82,13 +82,14 @@
 - **Screen / Window：** 自定义 `NSStatusItem` 视图（菜单栏控制条）。
 - **Area：** 所选区域保留淡蓝虚线框；框下方 OMI 深色 mini 面板（计时 + 圆形按钮：Annotate 占位 / Stop / Pause / Restart / Discard）。菜单栏控制条仍可用作备份。
 
-### 3.3 底部参数条（OMI 深色毛玻璃）
+### 3.3 底部参数条（实心深灰工具板）
 
 - 屏幕 **底部居中**，距物理底边约 **16pt**，可拖动
-- 三栏约 **260 / 260 / 100**，高度约 **230**
+- 三栏约 **224 / 224 / 76**，高度约 **186**；圆角 **8**，不透明深灰（无毛玻璃）
+- 下拉 option 层用紧凑 `NSMenu`（约 11pt），不是系统默认大字 Menu
 - Screen：显示器下拉；Window / Area：无源下拉（点选 / 框选已完成）
 - System Sound、Microphone（+ 设备）、Capture Mouse Cursor
-- 右侧大红录制圆钮；右上角关闭
+- 右侧红色录制圆钮；右上角关闭
 - 权限文案：Grant access / Open Settings；列表空 → **Relaunch**
 
 ### 3.4 Files List

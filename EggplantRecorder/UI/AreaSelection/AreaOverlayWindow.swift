@@ -28,7 +28,7 @@ final class AreaOverlayWindow: NSWindow {
         hasShadow = false
         ignoresMouseEvents = false
         acceptsMouseMovedEvents = true
-        // Below OptionsBar (statusWindow + 3) so the glass panel receives clicks.
+        // Below OptionsBar (statusWindow + 3) so the panel receives clicks.
         level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.statusWindow)) + 1)
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
         isReleasedWhenClosed = false

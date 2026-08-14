@@ -6,7 +6,7 @@ macOS **15+** menu-bar screen recorder (OMI-like). **SwiftUI + AppKit**.
 
 Product requirements: [`docs/product.md`](docs/product.md).
 
-**Status (2026-08-13):** MVP + Area + OMI options bar + Window hover-pick on `main`. Next = in-app Edit/export.
+**Status (2026-08-14):** MVP + Area + Window hover-pick + solid options bar on `main`. Next = in-app Edit/export.
 
 ## Identity
 
@@ -46,7 +46,7 @@ Product requirements: [`docs/product.md`](docs/product.md).
 - **Menu:** Record Screen / Area / Window / Show Files List / Quit.
 - **Area:** dim overlay + pale-blue dashed border + handles → OMI options bar (selection stays) → Record → **in-recording** dashed frame + mini control bar below selection → `Area-….mp4`. Last area rect remembered (UserDefaults).
 - **Window:** hover → blue dashed highlight → click → Options (no window dropdown). Esc cancels.
-- **Options bar:** bottom-center `NSPanel` (**16pt** above screen bottom), ~**260 / 260 / 100** × ~**230**, glass, draggable. Working: display picker (Screen), Mic, System Sound, cursor. Placeholders disabled. Grant / Relaunch copy when needed.
+- **Options bar:** bottom-center `NSPanel` (**16pt** above screen bottom), ~**224 / 224 / 76** × ~**186**, solid dark (no glass), draggable. Working: display picker (Screen), Mic, System Sound, cursor. Placeholders disabled. Grant / Relaunch copy when needed.
 - **Capture:** screen/window/area, exclude self PID, dual audio tracks, pause compresses timeline.
 - **Recording controls:** menu-bar Pause / Stop / `HH:MM:SS`; Area also gets floating OMI mini bar (Restart / Discard; Annotate stub).
 - **Stop →** library MP4 → Files List (800pt), Quick Look + Play, OMI context menu.
@@ -97,7 +97,7 @@ Xcode project uses **PBXFileSystemSynchronizedRootGroup** — new files under `E
 8. **Area handle resize:** drag **delta** from mouseDown, never “edge = mouse point”.
 9. **Stale `/Applications`:** prefer `build/EggplantRecorder.app` after agent builds.
 10. **Options checkbox:** unchecked must stay hittable (`.contentShape` / non-clear fill).
-11. **Options chrome:** no outer SwiftUI padding around glass (gray halo). Open at `screen.frame.minY + 16`, bottom-centered.
+11. **Options chrome:** solid fill (no outer SwiftUI padding / no glass halo). Open at `screen.frame.minY + 16`, bottom-centered.
 12. **Window pick:** hover+click only; snapshot hit-tester before overlays; exclude own PID.
 13. **Area recording chrome:** border window must `ignoresMouseEvents`; mini panel is a separate higher-level panel so clicks reach Pause/Stop. Both excluded from capture via `excludePID`.
 
@@ -109,7 +109,7 @@ Xcode project uses **PBXFileSystemSynchronizedRootGroup** — new files under `E
 | Panels | `NSPanel` / `NSWindow` + `NSHosting*` |
 | Capture | ScreenCaptureKit + AVAssetWriter |
 | Window pick | `CGWindowListCopyWindowInfo` → SCK `window:ID` |
-| Options glass | `NSVisualEffectView` (`.hudWindow`) |
+| Options panel | Solid charcoal `NSPanel` (no visual-effect glass) |
 | Preview | QuickLookUI |
 | Library probe | AVFoundation |
 

@@ -4,8 +4,8 @@ struct OptionsBarLeftColumn: View {
     @ObservedObject var model: OptionsBarModel
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            // Window / Area are picked via overlay — no source dropdown (OMI-like).
+        VStack(alignment: .leading, spacing: 7) {
+            // Window / Area are picked via overlay — no source dropdown.
             if model.mode == .screen {
                 sourceRow
             }
@@ -14,22 +14,20 @@ struct OptionsBarLeftColumn: View {
                 icon: "waveform",
                 title: model.selectedMicName,
                 showsMenu: model.microphone && !model.microphones.isEmpty,
+                menuItems: model.microphones.map { mic in
+                    OptionsMenuItem(
+                        id: mic.id,
+                        title: mic.isDefault ? "\(mic.name) (Default)" : mic.name,
+                        isSelected: mic.id == model.selectedMicID
+                    )
+                },
+                onMenuSelect: { id in
+                    model.selectedMicID = id
+                    model.microphone = true
+                },
                 isOn: $model.microphone,
                 enabled: true
-            ) {
-                ForEach(model.microphones) { mic in
-                    Button {
-                        model.selectedMicID = mic.id
-                        model.microphone = true
-                    } label: {
-                        if mic.id == model.selectedMicID {
-                            Label(mic.isDefault ? "\(mic.name) (Default)" : mic.name, systemImage: "checkmark")
-                        } else {
-                            Text(mic.isDefault ? "\(mic.name) (Default)" : mic.name)
-                        }
-                    }
-                }
-            }
+            )
 
             OptionsFeatureRow(
                 icon: "camera",
@@ -86,22 +84,20 @@ struct OptionsBarLeftColumn: View {
                 icon: sourceIconName,
                 title: model.selectedSourceName,
                 showsMenu: !model.sources.isEmpty,
+                menuItems: model.sources.map { source in
+                    OptionsMenuItem(
+                        id: source.id,
+                        title: source.name,
+                        isSelected: source.id == model.selectedSourceID
+                    )
+                },
+                onMenuSelect: { id in
+                    model.selectedSourceID = id
+                },
                 isOn: .constant(true),
                 enabled: !model.sources.isEmpty,
                 forceChecked: true
-            ) {
-                ForEach(model.sources) { source in
-                    Button {
-                        model.selectedSourceID = source.id
-                    } label: {
-                        if source.id == model.selectedSourceID {
-                            Label(source.name, systemImage: "checkmark")
-                        } else {
-                            Text(source.name)
-                        }
-                    }
-                }
-            }
+            )
         }
     }
 
@@ -118,50 +114,60 @@ struct OptionsBarMiddleColumn: View {
     @ObservedObject var model: OptionsBarModel
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 10) {
             OptionsParamRow(icon: "rectangle.dashed") {
                 Text("Size")
-                    .foregroundStyle(.white.opacity(0.92))
+                    .foregroundStyle(.white.opacity(0.9))
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
                 Spacer(minLength: 6)
                 OptionsSizeField(text: model.sizeWidthText)
                 Text("×")
                     .foregroundStyle(.white.opacity(0.45))
-                    .font(.system(size: 12, weight: .medium))
+                    .font(.system(size: 11, weight: .medium))
+                    .fixedSize()
                 OptionsSizeField(text: model.sizeHeightText)
             }
 
             OptionsParamRow(icon: "film") {
                 Text("Frame Rate")
-                    .foregroundStyle(.white.opacity(0.92))
+                    .foregroundStyle(.white.opacity(0.9))
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
                 Spacer(minLength: 6)
                 OptionsPillLabel(text: model.frameRateLabel, enabled: false)
             }
 
             OptionsParamRow(icon: "rectangle.ratio.16.to.9") {
                 Text("Resolution")
-                    .foregroundStyle(.white.opacity(0.92))
+                    .foregroundStyle(.white.opacity(0.9))
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
                 Spacer(minLength: 6)
                 OptionsPillLabel(text: model.resolutionLabel, enabled: false)
             }
 
             OptionsParamRow(icon: "clock") {
                 Text("Timing Recording")
-                    .foregroundStyle(.white.opacity(0.55))
+                    .foregroundStyle(.white.opacity(0.45))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
                 Spacer(minLength: 6)
                 Image(systemName: "gearshape")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.35))
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.3))
             }
 
             OptionsParamRow(icon: "timer") {
                 Text("Count Down")
-                    .foregroundStyle(.white.opacity(0.55))
+                    .foregroundStyle(.white.opacity(0.45))
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
                 Spacer(minLength: 6)
                 OptionsPillLabel(text: model.countdownLabel, enabled: false)
             }
         }
         .frame(maxHeight: .infinity, alignment: .center)
-        .opacity(0.95)
     }
 }
 
@@ -177,12 +183,11 @@ struct OptionsBarRightColumn: View {
             } label: {
                 ZStack {
                     Circle()
-                        .strokeBorder(Color.white.opacity(0.92), lineWidth: 3)
-                        .frame(width: 64, height: 64)
-                    Circle()
-                        .fill(Color(red: 1, green: 0.23, blue: 0.19))
+                        .strokeBorder(Color(red: 0.910, green: 0.918, blue: 0.929), lineWidth: 2)
                         .frame(width: 48, height: 48)
-                        .shadow(color: Color.red.opacity(0.45), radius: 8, y: 2)
+                    Circle()
+                        .fill(Color(red: 0.882, green: 0.114, blue: 0.094)) // #e11d18
+                        .frame(width: 32, height: 32)
                 }
                 .opacity(canRecord ? 1 : 0.35)
             }
@@ -217,7 +222,7 @@ struct OptionsBarPermissionFooter: View {
             }
         }
         .padding(.horizontal, 14)
-        .padding(.bottom, 12)
-        .padding(.top, 4)
+        .padding(.bottom, 10)
+        .padding(.top, 2)
     }
 }

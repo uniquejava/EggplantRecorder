@@ -94,7 +94,7 @@ final class AppState: ObservableObject {
                 self.phase = .idle
             }
         )
-        // Same OMI glass panel as Screen / Window — shown alongside the selection.
+        // Same options panel as Screen / Window — shown alongside the selection.
         optionsBar.show(mode: .area)
     }
 

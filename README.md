@@ -13,7 +13,7 @@ Native macOS **15+** menu-bar screen recorder (SwiftUI + AppKit), OMI-inspired.
 
 ## Status
 
-**On `main`:** tray-only launch; Record **Screen / Area / Window** (Window = hover → click); OMI-like glass options bar; dual audio + cursor toggle + pause; Files List with Quick Look + Play.
+**On `main`:** tray-only launch; Record **Screen / Area / Window** (Window = hover → click); solid dark options bar; dual audio + cursor toggle + pause; Files List with Quick Look + Play.
 
 **Still open:** in-app Edit/trim; Convert/Compress / Rename / Remove from List; options placeholders (PiP, FPS, …).
 
@@ -47,7 +47,7 @@ EggplantRecorder/
   Recording/                # ScreenCaptureKit + writer, filter/audio/timing
   UI/Shared/                # dashed chrome, displayID, glass backdrop
   UI/StatusItem/            # tray glyph + Pause/Stop/timer
-  UI/OptionsBar/            # OMI glass panel (260/260/100, bottom +16pt)
+  UI/OptionsBar/            # solid dark panel (224/224/76, bottom +16pt)
   UI/AreaSelection/         # dim overlay + handles; in-recording dashed frame + mini bar
   UI/WindowSelection/       # hover window highlight → click
   UI/FilesList/             # library window (~800pt)

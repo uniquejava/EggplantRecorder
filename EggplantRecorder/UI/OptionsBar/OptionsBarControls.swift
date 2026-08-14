@@ -1,47 +1,42 @@
 import SwiftUI
 
-struct OptionsFeatureRow<MenuContent: View>: View {
+struct OptionsFeatureRow: View {
     let icon: String
     let title: String
     var showsMenu: Bool = false
     var showsGear: Bool = false
+    var menuItems: [OptionsMenuItem] = []
+    var onMenuSelect: ((String) -> Void)? = nil
     @Binding var isOn: Bool
     var enabled: Bool
     var forceChecked: Bool = false
-    @ViewBuilder var menuContent: () -> MenuContent
+
+    private let labelOpacity: Double = 0.92
+    private let mutedOpacity: Double = 0.4
 
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 8) {
             Image(systemName: icon)
-                .font(.system(size: 13, weight: .medium))
-                .foregroundStyle(.white.opacity(enabled ? 0.9 : 0.35))
-                .frame(width: 18)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(.white.opacity(enabled ? 0.85 : 0.32))
+                .frame(width: 16)
 
-            if showsMenu, enabled {
-                Menu {
-                    menuContent()
-                } label: {
-                    HStack(spacing: 4) {
-                        Text(title)
-                            .font(.system(size: 12.5, weight: .regular))
-                            .foregroundStyle(.white.opacity(0.92))
-                            .lineLimit(1)
-                            .truncationMode(.tail)
-                        Image(systemName: "chevron.down")
-                            .font(.system(size: 9, weight: .semibold))
-                            .foregroundStyle(.white.opacity(0.45))
-                    }
-                }
-                .menuStyle(.borderlessButton)
+            if showsMenu, enabled, !menuItems.isEmpty {
+                OptionsCompactMenuTrigger(
+                    title: title,
+                    items: menuItems,
+                    onSelect: { id in onMenuSelect?(id) }
+                )
             } else {
                 Text(title)
-                    .font(.system(size: 12.5, weight: .regular))
-                    .foregroundStyle(.white.opacity(enabled ? 0.92 : 0.4))
+                    .font(.system(size: 11.5, weight: .regular))
+                    .foregroundStyle(.white.opacity(enabled ? labelOpacity : mutedOpacity))
                     .lineLimit(1)
                     .truncationMode(.tail)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 if showsMenu {
                     Image(systemName: "chevron.down")
-                        .font(.system(size: 9, weight: .semibold))
+                        .font(.system(size: 8, weight: .semibold))
                         .foregroundStyle(.white.opacity(0.22))
                 }
             }
@@ -49,40 +44,17 @@ struct OptionsFeatureRow<MenuContent: View>: View {
             if showsGear {
                 Image(systemName: "gearshape")
                     .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(.white.opacity(enabled ? 0.55 : 0.28))
+                    .foregroundStyle(.white.opacity(enabled ? 0.5 : 0.25))
             }
 
-            Spacer(minLength: 6)
-
-            OMICheckbox(
+            OptionsCheckbox(
                 isOn: $isOn,
                 enabled: enabled && !forceChecked,
                 forceOn: forceChecked
             )
         }
-        .frame(minHeight: 22)
+        .frame(minHeight: 20)
         .opacity(enabled || forceChecked ? 1 : 0.72)
-    }
-}
-
-extension OptionsFeatureRow where MenuContent == EmptyView {
-    init(
-        icon: String,
-        title: String,
-        showsMenu: Bool = false,
-        showsGear: Bool = false,
-        isOn: Binding<Bool>,
-        enabled: Bool,
-        forceChecked: Bool = false
-    ) {
-        self.icon = icon
-        self.title = title
-        self.showsMenu = showsMenu
-        self.showsGear = showsGear
-        self._isOn = isOn
-        self.enabled = enabled
-        self.forceChecked = forceChecked
-        self.menuContent = { EmptyView() }
     }
 }
 
@@ -91,36 +63,40 @@ struct OptionsParamRow<Content: View>: View {
     @ViewBuilder var content: () -> Content
 
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 8) {
             Image(systemName: icon)
-                .font(.system(size: 13, weight: .medium))
-                .foregroundStyle(.white.opacity(0.75))
-                .frame(width: 18)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(.white.opacity(0.7))
+                .frame(width: 16)
             content()
-                .font(.system(size: 13))
+                .font(.system(size: 11.5))
         }
-        .frame(minHeight: 24)
+        .frame(minHeight: 22)
     }
 }
 
 struct OptionsSizeField: View {
     let text: String
 
+    private let fieldFill = Color(red: 0.122, green: 0.129, blue: 0.145) // #1f2125
+    private let fieldStroke = Color(red: 0.290, green: 0.306, blue: 0.341) // #4a4e57
+
     var body: some View {
         Text(text)
-            .font(.system(size: 12, weight: .medium).monospacedDigit())
-            .foregroundStyle(.white.opacity(0.9))
-            .frame(minWidth: 44)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 5)
+            .font(.system(size: 11, weight: .medium).monospacedDigit())
+            .foregroundStyle(Color(red: 0.910, green: 0.918, blue: 0.929))
+            .frame(minWidth: 36)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 3)
             .background(
-                RoundedRectangle(cornerRadius: 5, style: .continuous)
-                    .fill(Color.white.opacity(0.08))
+                RoundedRectangle(cornerRadius: 3, style: .continuous)
+                    .fill(fieldFill)
                     .overlay(
-                        RoundedRectangle(cornerRadius: 5, style: .continuous)
-                            .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                        RoundedRectangle(cornerRadius: 3, style: .continuous)
+                            .stroke(fieldStroke, lineWidth: 1)
                     )
             )
+            .fixedSize(horizontal: true, vertical: false)
     }
 }
 
@@ -128,43 +104,55 @@ struct OptionsPillLabel: View {
     let text: String
     var enabled: Bool = false
 
+    private let fieldFill = Color(red: 0.122, green: 0.129, blue: 0.145)
+    private let fieldStroke = Color(red: 0.290, green: 0.306, blue: 0.341)
+
     var body: some View {
         Text(text)
-            .font(.system(size: 11, weight: .semibold))
-            .foregroundStyle(enabled ? Color.black.opacity(0.85) : Color.black.opacity(0.45))
-            .padding(.horizontal, 10)
-            .padding(.vertical, 4)
+            .font(.system(size: 10.5, weight: .semibold))
+            .foregroundStyle(enabled ? Color.white.opacity(0.9) : Color.white.opacity(0.45))
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
             .background(
-                Capsule(style: .continuous)
-                    .fill(Color.white.opacity(enabled ? 0.95 : 0.55))
+                RoundedRectangle(cornerRadius: 4, style: .continuous)
+                    .fill(fieldFill)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 4, style: .continuous)
+                            .stroke(fieldStroke, lineWidth: 1)
+                    )
             )
+            .fixedSize(horizontal: true, vertical: false)
     }
 }
 
 /// Unchecked fill must not be `Color.clear` — SwiftUI skips hit-testing on clear fills.
-struct OMICheckbox: View {
+struct OptionsCheckbox: View {
     @Binding var isOn: Bool
     var enabled: Bool = true
     var forceOn: Bool = false
 
     private var checked: Bool { forceOn || isOn }
 
+    private let uncheckedStroke = Color(red: 0.545, green: 0.565, blue: 0.600) // #8b9099
+    private let uncheckedFill = Color(red: 0.122, green: 0.129, blue: 0.145) // #1f2125
+    private let checkedFill = Color(red: 0.239, green: 0.494, blue: 1.0) // #3d7eff
+
     var body: some View {
         Button {
             guard enabled else { return }
             isOn.toggle()
         } label: {
-            RoundedRectangle(cornerRadius: 4, style: .continuous)
-                .fill(checked ? Color(red: 0.04, green: 0.52, blue: 1) : Color.white.opacity(0.001))
-                .frame(width: 15, height: 15)
+            RoundedRectangle(cornerRadius: 2, style: .continuous)
+                .fill(checked ? checkedFill : uncheckedFill)
+                .frame(width: 14, height: 14)
                 .overlay(
-                    RoundedRectangle(cornerRadius: 4, style: .continuous)
-                        .stroke(checked ? Color.clear : Color.white.opacity(enabled ? 0.45 : 0.22), lineWidth: 1.2)
+                    RoundedRectangle(cornerRadius: 2, style: .continuous)
+                        .stroke(checked ? Color.clear : uncheckedStroke.opacity(enabled ? 1 : 0.45), lineWidth: 1)
                 )
                 .overlay {
                     if checked {
                         Image(systemName: "checkmark")
-                            .font(.system(size: 9, weight: .bold))
+                            .font(.system(size: 8, weight: .bold))
                             .foregroundStyle(.white)
                     }
                 }
