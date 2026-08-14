@@ -44,7 +44,7 @@ Product requirements: [`docs/product.md`](docs/product.md).
 
 - **Idle tray:** custom `NSStatusItem` + `RecorderGlyph`.
 - **Menu:** Record Screen / Area / Window / Show Files List / Quit.
-- **Area:** dim overlay + pale-blue dashed border + handles → Cancel/Continue → Options → `Area-….mp4`.
+- **Area:** dim overlay + pale-blue dashed border + handles → OMI options bar (same as Screen/Window; selection stays visible) → Record → `Area-….mp4`.
 - **Window:** hover → blue dashed highlight → click → Options (no window dropdown). Esc cancels.
 - **Options bar:** bottom-center `NSPanel` (**16pt** above screen bottom), ~**260 / 260 / 100** × ~**230**, glass, draggable. Working: display picker (Screen), Mic, System Sound, cursor. Placeholders disabled. Grant / Relaunch copy when needed.
 - **Capture:** screen/window/area, exclude self PID, dual audio tracks, pause compresses timeline.
@@ -88,7 +88,7 @@ Xcode project uses **PBXFileSystemSynchronizedRootGroup** — new files under `E
 4. **Dual audio tracks:** never mux system + mic into one `AVAssetWriterInput`.
 5. **Table tooltips:** SwiftUI `.help` often fails in `Table` — use AppKit `NSButton.toolTip`.
 6. **Files List width:** **800** wide; keep column ideals tight.
-7. **Area Confirm bar:** inside the overlay window (sibling above canvas). Don’t name a property `toolbar` on `NSWindow` subclasses.
+7. **Area + options:** keep dim overlay while OptionsBar is up; panel level must be above the overlay so mic/Record stay clickable. Don’t name a property `toolbar` on `NSWindow` subclasses.
 8. **Area handle resize:** drag **delta** from mouseDown, never “edge = mouse point”.
 9. **Stale `/Applications`:** prefer `build/EggplantRecorder.app` after agent builds.
 10. **Options checkbox:** unchecked must stay hittable (`.contentShape` / non-clear fill).
@@ -125,4 +125,4 @@ open EggplantRecorder.xcodeproj
 
 ## One-liner for the next agent
 
-**Tray → Screen / Area / Window(hover-pick) → OMI options → record → Files List is done.** Next: in-app Edit/export. Do not regress Area toolbar embedding, options checkbox hit-testing, bottom-16pt panel placement, mic entitlement, or Quick Look rules.
+**Tray → Screen / Area(live selection + options) / Window(hover-pick) → OMI options → record → Files List is done.** Next: in-app Edit/export. Do not regress Area+options z-order, options checkbox hit-testing, bottom-16pt panel placement, mic entitlement, or Quick Look rules.

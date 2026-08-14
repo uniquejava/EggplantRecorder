@@ -56,7 +56,11 @@ final class AppState: ObservableObject {
 
     func showOptions(mode: RecordingKind, anchorRect: CGRect? = nil) {
         guard phase != .recording else { return }
-        areaSelection.hide()
+        // Area keeps its dim overlay while the options panel is up (OMI-like).
+        if mode != .area {
+            areaSelection.hide()
+            pendingArea = nil
+        }
         windowSelection.hide()
         optionsMode = mode
         phase = .configuring
@@ -70,18 +74,22 @@ final class AppState: ObservableObject {
         pendingArea = nil
         pendingWindow = nil
         phase = .configuring
+        optionsMode = .area
         areaSelection.show(
-            onComplete: { [weak self] result in
+            onSelectionChanged: { [weak self] result in
                 guard let self else { return }
                 self.pendingArea = result
-                self.showOptions(mode: .area)
+                self.optionsBar.noteAreaSelectionChanged()
             },
             onCancel: { [weak self] in
                 guard let self else { return }
                 self.pendingArea = nil
+                self.optionsBar.hide()
                 self.phase = .idle
             }
         )
+        // Same OMI glass panel as Screen / Window — shown alongside the selection.
+        optionsBar.show(mode: .area)
     }
 
     func showWindowSelection() {
@@ -107,6 +115,7 @@ final class AppState: ObservableObject {
 
     func hideOptions() {
         optionsBar.hide()
+        areaSelection.hide()
         if phase == .configuring {
             phase = .idle
             pendingArea = nil
@@ -122,6 +131,7 @@ final class AppState: ObservableObject {
             try await recorder.start(config: config, outputURL: output)
             pendingArea = nil
             pendingWindow = nil
+            areaSelection.hide()
             optionsBar.hide()
             phase = .recording
             isPaused = false

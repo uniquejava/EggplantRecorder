@@ -93,6 +93,31 @@ final class OptionsBarModel: ObservableObject {
         Task { await reload() }
     }
 
+    /// Called while the area overlay is live so Size / Record enablement stay in sync.
+    func noteAreaSelectionChanged() {
+        guard mode == .area else { return }
+        if let area = appState?.pendingArea {
+            let source = CaptureSource(
+                id: "display:\(area.displayID)",
+                kind: .area,
+                name: "Area \(area.pixelWidth)×\(area.pixelHeight)",
+                width: area.pixelWidth,
+                height: area.pixelHeight
+            )
+            sources = [source]
+            selectedSourceID = source.id
+            if permissionState != .needsGrant && permissionState != .needsRelaunch {
+                permissionState = CapturePermissions.hasScreenAccess ? .granted : .needsGrant
+            }
+            bannerMessage = nil
+        } else {
+            sources = []
+            selectedSourceID = ""
+            bannerMessage = "Drag to select an area."
+        }
+        onContentSizeMayChange?()
+    }
+
     func reload() async {
         isLoading = true
         defer {
@@ -365,8 +390,8 @@ struct OptionsBarView: View {
 
     private var leftColumn: some View {
         VStack(alignment: .leading, spacing: 8) {
-            // Window is picked via hover overlay — no source dropdown (OMI-like).
-            if model.mode != .window {
+            // Window / Area are picked via overlay — no source dropdown (OMI-like).
+            if model.mode == .screen {
                 sourceRow
             }
 
@@ -515,17 +540,7 @@ struct OptionsBarView: View {
     @ViewBuilder
     private var sourceRow: some View {
         let icon = sourceIconName
-        if model.mode == .area {
-            featureRowLabel(
-                icon: icon,
-                title: model.selectedSourceName,
-                showsMenu: false,
-                showsGear: false,
-                isOn: .constant(true),
-                enabled: false,
-                forceChecked: true
-            )
-        } else if model.isLoading {
+        if model.isLoading {
             featureRowLabel(
                 icon: icon,
                 title: "Loading…",

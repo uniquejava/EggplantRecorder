@@ -23,7 +23,8 @@ final class OptionsBarController {
         resizeToFit()
         positionPanelBottomCenter()
         panel?.alphaValue = 0
-        panel?.level = .statusBar
+        // Above area dim overlay so the glass panel stays interactive.
+        panel?.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.statusWindow)) + 3)
         panel?.orderFrontRegardless()
         panel?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
@@ -56,6 +57,11 @@ final class OptionsBarController {
         }
     }
 
+    /// Area selection resizes live — refresh Size fields / source without a full reload.
+    func noteAreaSelectionChanged() {
+        model?.noteAreaSelectionChanged()
+    }
+
     private func createPanel(appState: AppState) {
         let model = OptionsBarModel(appState: appState)
         self.model = model
@@ -75,7 +81,8 @@ final class OptionsBarController {
         panel.hasShadow = true
         panel.isMovable = true
         panel.isMovableByWindowBackground = true
-        panel.level = .statusBar
+        // Above area/window pick overlays (statusWindow + 1) so mic / Record stay clickable.
+        panel.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.statusWindow)) + 3)
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
         panel.isFloatingPanel = true
         panel.hidesOnDeactivate = false

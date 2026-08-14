@@ -9,29 +9,31 @@ struct AreaSelectionResult {
     let pixelHeight: Int
 }
 
-/// Full-screen dim overlays. Confirm toolbar is embedded **inside** the active overlay
-/// (sibling above the canvas) so the mask can never steal its clicks.
+/// Full-screen dim overlays with a live selection. Options bar is a separate higher-level
+/// `NSPanel` (same OMI glass UI as Screen / Window) — no Cancel/Continue chrome here.
 @MainActor
 final class AreaSelectionController {
     private var overlayWindows: [AreaOverlayWindow] = []
     private var activeScreenID: CGDirectDisplayID?
-    private var onComplete: ((AreaSelectionResult) -> Void)?
+    private var onSelectionChanged: ((AreaSelectionResult?) -> Void)?
     private var onCancel: (() -> Void)?
     private var escapeMonitor: Any?
 
+    /// Space reserved at the bottom so handles stay above the options panel (~230 + 16pt).
+    static let optionsReserveHeight: CGFloat = 260
+
     var isVisible: Bool { !overlayWindows.isEmpty }
 
-    func show(onComplete: @escaping (AreaSelectionResult) -> Void, onCancel: @escaping () -> Void) {
+    func show(
+        onSelectionChanged: @escaping (AreaSelectionResult?) -> Void,
+        onCancel: @escaping () -> Void
+    ) {
         hide()
-        self.onComplete = onComplete
+        self.onSelectionChanged = onSelectionChanged
         self.onCancel = onCancel
 
         for screen in NSScreen.screens {
-            let window = AreaOverlayWindow(
-                screen: screen,
-                onCancel: { [weak self] in self?.cancel() },
-                onContinue: { [weak self] in self?.confirm() }
-            )
+            let window = AreaOverlayWindow(screen: screen)
             window.selectionDelegate = self
             window.orderFrontRegardless()
             overlayWindows.append(window)
@@ -41,18 +43,14 @@ final class AreaSelectionController {
             }
         }
 
-        refreshToolbarPlacement()
         overlayWindows.first(where: { $0.screen?.displayID == activeScreenID })?
             .makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
+        publishSelection()
 
         escapeMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             if event.keyCode == 53 { // Escape
                 self?.cancel()
-                return nil
-            }
-            if event.keyCode == 36 || event.keyCode == 76 { // Return / keypad Enter
-                self?.confirm()
                 return nil
             }
             return event
@@ -67,16 +65,8 @@ final class AreaSelectionController {
         overlayWindows.forEach { $0.orderOut(nil) }
         overlayWindows.removeAll()
         activeScreenID = nil
-    }
-
-    private func confirm() {
-        guard let result = currentResult() else {
-            NSSound.beep()
-            return
-        }
-        let complete = onComplete
-        hide()
-        complete?(result)
+        onSelectionChanged = nil
+        onCancel = nil
     }
 
     private func cancel() {
@@ -91,11 +81,8 @@ final class AreaSelectionController {
         return window?.makeResult()
     }
 
-    private func refreshToolbarPlacement() {
-        for window in overlayWindows {
-            let active = window.screen?.displayID == activeScreenID
-            window.setToolbarVisible(active)
-        }
+    private func publishSelection() {
+        onSelectionChanged?(currentResult())
     }
 }
 
@@ -105,12 +92,12 @@ extension AreaSelectionController: AreaOverlaySelectionDelegate {
         for other in overlayWindows where other !== window {
             other.clearSelection()
         }
-        refreshToolbarPlacement()
+        publishSelection()
     }
 
     func areaOverlayDidChangeSelection(_ window: AreaOverlayWindow) {
         activeScreenID = window.screen?.displayID
-        refreshToolbarPlacement()
+        publishSelection()
     }
 }
 
@@ -124,24 +111,12 @@ protocol AreaOverlaySelectionDelegate: AnyObject {
 final class AreaOverlayWindow: NSWindow {
     weak var selectionDelegate: AreaOverlaySelectionDelegate?
     private let canvas: AreaSelectionCanvas
-    private let confirmBar: AreaConfirmBarNSView
     private let root = NSView()
 
-    static let toolbarHeight: CGFloat = 64
-    static let toolbarWidth: CGFloat = 440
-    static let toolbarBottomInset: CGFloat = 28
-
-    init(
-        screen: NSScreen,
-        onCancel: @escaping () -> Void,
-        onContinue: @escaping () -> Void
-    ) {
+    init(screen: NSScreen) {
         let size = screen.frame.size
         canvas = AreaSelectionCanvas(frame: NSRect(origin: .zero, size: size))
-        canvas.toolbarReserveHeight = Self.toolbarHeight + Self.toolbarBottomInset + 12
-        confirmBar = AreaConfirmBarNSView(frame: .zero)
-        confirmBar.onCancel = onCancel
-        confirmBar.onContinue = onContinue
+        canvas.toolbarReserveHeight = AreaSelectionController.optionsReserveHeight
 
         super.init(
             contentRect: screen.frame,
@@ -155,6 +130,7 @@ final class AreaOverlayWindow: NSWindow {
         hasShadow = false
         ignoresMouseEvents = false
         acceptsMouseMovedEvents = true
+        // Below OptionsBar (statusWindow + 3) so the glass panel receives clicks.
         level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.statusWindow)) + 1)
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
         isReleasedWhenClosed = false
@@ -165,12 +141,6 @@ final class AreaOverlayWindow: NSWindow {
 
         canvas.autoresizingMask = [.width, .height]
         root.addSubview(canvas)
-
-        confirmBar.translatesAutoresizingMaskIntoConstraints = true
-        root.addSubview(confirmBar)
-        // Added after canvas → always hit-tested first within its frame.
-        layoutConfirmBar()
-        confirmBar.isHidden = true
 
         canvas.onBeginEditing = { [weak self] in
             guard let self else { return }
@@ -184,27 +154,10 @@ final class AreaOverlayWindow: NSWindow {
 
     override var canBecomeKey: Bool { true }
 
-    func setToolbarVisible(_ visible: Bool) {
-        confirmBar.isHidden = !visible
-        if visible {
-            layoutConfirmBar()
-            root.addSubview(confirmBar, positioned: .above, relativeTo: canvas)
-        }
-    }
-
-    private func layoutConfirmBar() {
-        let width = Self.toolbarWidth
-        let height = Self.toolbarHeight
-        let x = (root.bounds.width - width) / 2
-        let y = Self.toolbarBottomInset
-        confirmBar.frame = NSRect(x: x, y: y, width: width, height: height)
-    }
-
     override func setFrame(_ frameRect: NSRect, display flag: Bool) {
         super.setFrame(frameRect, display: flag)
         root.frame = NSRect(origin: .zero, size: frameRect.size)
         canvas.frame = root.bounds
-        layoutConfirmBar()
     }
 
     func activateDefaultSelection() {
@@ -245,97 +198,6 @@ final class AreaOverlayWindow: NSWindow {
     }
 }
 
-// MARK: - AppKit confirm bar (reliable hit-testing)
-
-final class AreaConfirmBarNSView: NSView {
-    var onCancel: (() -> Void)?
-    var onContinue: (() -> Void)?
-
-    private let cancelButton = NSButton(title: "Cancel", target: nil, action: nil)
-    private let continueButton = NSButton(title: "Continue", target: nil, action: nil)
-    private let hint = NSTextField(labelWithString: "Drag to select · handles to resize")
-
-    override init(frame frameRect: NSRect) {
-        super.init(frame: frameRect)
-        wantsLayer = true
-        layer?.backgroundColor = NSColor(calibratedRed: 0.12, green: 0.12, blue: 0.13, alpha: 0.96).cgColor
-        layer?.cornerRadius = 12
-        layer?.borderWidth = 1
-        layer?.borderColor = NSColor.white.withAlphaComponent(0.1).cgColor
-
-        hint.font = .systemFont(ofSize: 12)
-        hint.textColor = .secondaryLabelColor
-        hint.isEditable = false
-        hint.isBordered = false
-        hint.drawsBackground = false
-        hint.lineBreakMode = .byTruncatingTail
-
-        cancelButton.bezelStyle = .rounded
-        cancelButton.target = self
-        cancelButton.action = #selector(cancelClicked)
-
-        continueButton.bezelStyle = .rounded
-        continueButton.setButtonType(.momentaryPushIn)
-        continueButton.isBordered = false
-        continueButton.wantsLayer = true
-        continueButton.layer?.backgroundColor = NSColor.controlAccentColor.cgColor
-        continueButton.layer?.cornerRadius = 14
-        continueButton.attributedTitle = NSAttributedString(
-            string: "Continue",
-            attributes: [
-                .foregroundColor: NSColor.white,
-                .font: NSFont.systemFont(ofSize: 13, weight: .semibold),
-            ]
-        )
-        continueButton.target = self
-        continueButton.action = #selector(continueClicked)
-
-        addSubview(hint)
-        addSubview(cancelButton)
-        addSubview(continueButton)
-    }
-
-    @available(*, unavailable)
-    required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
-    }
-
-    override func layout() {
-        super.layout()
-        let pad: CGFloat = 14
-        let btnH: CGFloat = 28
-        let contW: CGFloat = 96
-        let cancelW: CGFloat = 72
-        continueButton.frame = NSRect(
-            x: bounds.width - pad - contW,
-            y: (bounds.height - btnH) / 2,
-            width: contW,
-            height: btnH
-        )
-        cancelButton.frame = NSRect(
-            x: continueButton.frame.minX - 10 - cancelW,
-            y: (bounds.height - btnH) / 2,
-            width: cancelW,
-            height: btnH
-        )
-        hint.frame = NSRect(
-            x: pad,
-            y: (bounds.height - 18) / 2,
-            width: max(40, cancelButton.frame.minX - pad - 12),
-            height: 18
-        )
-    }
-
-    /// Opaque to hit-testing across the whole bar (no fall-through to dim canvas).
-    override func hitTest(_ point: NSPoint) -> NSView? {
-        guard !isHidden, frame.contains(point) else { return nil }
-        return super.hitTest(point) ?? self
-    }
-
-    @objc private func cancelClicked() { onCancel?() }
-    @objc private func continueClicked() { onContinue?() }
-}
-
 // MARK: - Canvas
 
 private enum HandlePosition: CaseIterable {
@@ -345,7 +207,7 @@ private enum HandlePosition: CaseIterable {
 final class AreaSelectionCanvas: NSView {
     var onBeginEditing: (() -> Void)?
     var onSelectionChanged: (() -> Void)?
-    /// Keep selection / handles above the embedded toolbar.
+    /// Keep selection / handles above the options panel strip.
     var toolbarReserveHeight: CGFloat = 0
 
     private(set) var selectionInWindowCoords: CGRect?
@@ -387,7 +249,7 @@ final class AreaSelectionCanvas: NSView {
     }
 
     override func hitTest(_ point: NSPoint) -> NSView? {
-        // Let the toolbar sibling own the bottom strip.
+        // Leave the bottom strip for the options NSPanel above us.
         if point.y < toolbarReserveHeight {
             return nil
         }
@@ -402,7 +264,6 @@ final class AreaSelectionCanvas: NSView {
             NSColor.black.withAlphaComponent(0.45).setFill()
             dim.fill()
 
-            // Light-blue dashed border via CGContext (reliable dash + color).
             if let ctx = NSGraphicsContext.current?.cgContext {
                 ctx.saveGState()
                 ctx.setStrokeColor(Self.selectionBlue.cgColor)
@@ -412,7 +273,6 @@ final class AreaSelectionCanvas: NSView {
                 ctx.restoreGState()
             }
 
-            // Handles: blue fill + white ring (corners + mid-edges).
             for handle in HandlePosition.allCases {
                 let rect = handleRect(handle, in: selection)
                 Self.selectionBlue.setFill()
@@ -537,8 +397,6 @@ final class AreaSelectionCanvas: NSView {
     }
 
     /// Move the grabbed edge(s) by drag delta from mouseDown — zero movement keeps the rect unchanged.
-    /// (Absolute “edge = mouse” math collapses height/width to ~0 on the first drag tick because
-    /// the handle sits on that edge, then `clamp` snaps it to `minSize`.)
     private func resizedByDelta(_ start: CGRect, handle: HandlePosition, dx: CGFloat, dy: CGFloat) -> CGRect {
         var minX = start.minX
         var maxX = start.maxX

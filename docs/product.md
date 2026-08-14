@@ -37,15 +37,15 @@
 启动 → 仅菜单栏图标
   ├─ 点击图标 → 弹出菜单
   │    ├─ Record Screen（全屏）
-  │    ├─ Record Area（框选 → Continue → 参数条）
+  │    ├─ Record Area（框选 + 底部参数条同时出现）
   │    ├─ Record Window（悬停虚线框 → 点击 → 参数条）
   │    ├─ Show Files List
   │    └─ Quit
   │
-  ├─ Screen / Area(Continue 后) / Window(点选后) → 屏幕底部「参数条」
-  │    ├─ Screen：显示器下拉
+  ├─ Screen / Area(框选中) / Window(点选后) → 屏幕底部「参数条」
+  │    ├─ Screen：显示器下拉；Window / Area：无源下拉
   │    ├─ System Sound / Microphone（+ 输入设备）/ Capture Mouse Cursor
-  │    └─ 红色 Record → 开始录制，参数条关闭
+  │    └─ 红色 Record → 开始录制，参数条（与 Area 遮罩）关闭
   │
   ├─ 录制中 → 菜单栏控制条
   │    ├─ Pause / Resume
@@ -125,7 +125,7 @@
 
 1. 冷启动：只有菜单栏图标。
 2. 菜单：Screen / Area / Window / Files List / Quit。
-3. Screen → 参数条 → Record；Area → 框选 → Continue → 参数条；Window → 悬停 → 点击 → 参数条。
+3. Screen → 参数条 → Record；Area → 框选同时出参数条 → Record；Window → 悬停 → 点击 → 参数条。
 4. 录制中：Pause + Stop + 计时；Pause 后计时停、文件无冻帧。
 5. Stop → 库目录出现 MP4 → Files List 打开并高亮。
 6. Preview / Finder / Delete / Play 可用；Edit 可二期。

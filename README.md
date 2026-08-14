@@ -56,7 +56,7 @@ EggplantRecorder/
 
 1. Cold start → **only** menu bar icon (no Files List).
 2. Record Screen → options bar at bottom center (~16pt up) → Record.
-3. Record Area → pale-blue dashed selection + handles → Continue → options → Record → `Area-….mp4`.
+3. Record Area → pale-blue dashed selection + handles + OMI options bar → Record → `Area-….mp4`.
 4. Record Window → hover blue dashed border → click → options (no window dropdown) → Record → `Window-….mp4`.
 5. Status item → Pause / Stop / clock (pause freezes elapsed + file timeline).
 6. Stop → MP4 in `~/Movies/EggplantRecorder/` → Files List; Preview = Quick Look, Play = default app.
