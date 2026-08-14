@@ -88,6 +88,26 @@ enum RecordingsLibrary {
         )
     }
 
+    /// Next free `Name-Edit.mp4` (then `-2`, `-3`, …) in the library.
+    static func makeEditOutputURL(from path: String) throws -> URL {
+        try ensureLibraryPath(path)
+        try ensureDirectory()
+        let base = URL(fileURLWithPath: path).deletingPathExtension().lastPathComponent
+        let stem = base.hasSuffix("-Edit") ? base : "\(base)-Edit"
+        var candidate = directoryURL.appendingPathComponent("\(stem).mp4")
+        if !FileManager.default.fileExists(atPath: candidate.path) {
+            return candidate
+        }
+        var n = 2
+        while true {
+            candidate = directoryURL.appendingPathComponent("\(stem)-\(n).mp4")
+            if !FileManager.default.fileExists(atPath: candidate.path) {
+                return candidate
+            }
+            n += 1
+        }
+    }
+
     /// Renames the file's base name (`.mp4` is kept). Returns the new absolute path.
     @discardableResult
     static func rename(path: String, to newBaseName: String) throws -> String {

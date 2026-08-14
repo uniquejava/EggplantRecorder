@@ -6,7 +6,7 @@ macOS **15+** menu-bar screen recorder (OMI-like). **SwiftUI + AppKit**.
 
 Product requirements: [`docs/product.md`](docs/product.md).
 
-**Status (2026-08-14):** MVP + Area + Window hover-pick + solid options bar on `main`. Next = in-app Edit/export.
+**Status (2026-08-14):** MVP + Area + Window hover-pick + solid options bar + in-app Edit/trim/export on `main`.
 
 ## Identity
 
@@ -34,11 +34,9 @@ Product requirements: [`docs/product.md`](docs/product.md).
 
 | Priority | Item | Notes |
 |----------|------|--------|
-| High | In-app **Edit** (trim / export) | Spec §3.5; stub in `UI/FilesList/`; add `UI/Editor/` rather than growing FilesListView |
-| Medium | OMI context stubs | Convert/Compress, Rename, Remove from List — menu present, disabled (`FilesListView`) |
+| Medium | OMI context stubs | Convert/Compress, Remove from List — menu present, disabled (`FilesListView`) |
 | Low | Wire options placeholders | PiP / Click Zoom / Keyboard / FPS / Resolution / Countdown → `OptionsBarColumns` + `OptionsBarModel` |
 | Low | Dock / app icon polish | |
-| Low | ExportService / ffmpeg | Spec allows system ffmpeg; list duration uses `AVURLAsset` today |
 
 ## What’s implemented
 
@@ -50,7 +48,8 @@ Product requirements: [`docs/product.md`](docs/product.md).
 - **Options bar:** bottom-center `NSPanel` (**16pt** above screen bottom), ~**224 / 224 / 76** × ~**186**, solid dark (no glass), draggable. Working: display picker (Screen), Mic, System Sound, cursor. Placeholders disabled. Grant / Relaunch copy when needed.
 - **Capture:** screen/window/area, exclude self PID, dual audio tracks, pause compresses timeline.
 - **Recording controls:** menu-bar Pause / Stop / `HH:MM:SS`; Area also gets compact solid mini bar (Restart / Discard; Annotate stub).
-- **Stop →** library MP4 → Files List (820pt), Quick Look + Play, OMI context menu.
+- **Stop →** library MP4 → Files List (820pt), Quick Look + Play + Edit, OMI context menu.
+- **Edit:** Files List right-click / Operation → preview + trim handles + Export → `Name-Edit.mp4` (dual audio preserved).
 - **Launch:** tray only on cold start.
 - **Mic:** entitlement `com.apple.security.device.audio-input` under Hardened Runtime.
 
@@ -77,9 +76,11 @@ EggplantRecorder/
     AreaSelection/                  # pick overlay + in-recording chrome (border / mini bar)
     WindowSelection/                # hover-pick controller + overlay
     FilesList/                      # window + table + cells
+    Editor/                         # trim preview + export window
   Services/
     RecordingsLibrary.swift
     MediaProbe.swift
+    ExportService.swift             # trim MP4; video re-encode, audio passthrough
     QuickLookController.swift
   Assets.xcassets/RecorderGlyph.imageset/
 ```
@@ -112,6 +113,7 @@ Xcode project uses **PBXFileSystemSynchronizedRootGroup** — new files under `E
 | Window pick | `CGWindowListCopyWindowInfo` → SCK `window:ID` |
 | Options panel | Solid charcoal `NSPanel` (no visual-effect glass) |
 | Preview | QuickLookUI |
+| Edit / Export | AVFoundation reader/writer (trim; dual audio kept) |
 | Library probe | AVFoundation |
 
 ## Commands
@@ -133,4 +135,4 @@ open EggplantRecorder.xcodeproj
 
 ## One-liner for the next agent
 
-**Tray → Screen / Area(live selection + options → dashed frame + mini bar while recording) / Window(hover-pick) / Window Area(hover-pick → Area preset) → OMI options → record → Files List is done.** Next: in-app Edit/export. Do not regress Area+options z-order, area recording chrome click-through, options checkbox hit-testing, bottom-16pt panel placement, mic entitlement, or Quick Look rules.
+**Tray → Screen / Area(live selection + options → dashed frame + mini bar while recording) / Window(hover-pick) / Window Area(hover-pick → Area preset) → OMI options → record → Files List → right-click Edit (trim + Export) is done.** Next: Convert/Compress stubs / options placeholders. Do not regress Area+options z-order, area recording chrome click-through, options checkbox hit-testing, bottom-16pt panel placement, mic entitlement, Quick Look rules, or dual-audio export.

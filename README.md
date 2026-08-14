@@ -13,9 +13,9 @@ Native macOS **15+** menu-bar screen recorder (SwiftUI + AppKit), OMI-inspired.
 
 ## Status
 
-**On `main`:** tray-only launch; Record **Screen / Area / Window** (Window = hover → click); solid dark options bar; dual audio + cursor toggle + pause; Files List with Quick Look + Play.
+**On `main`:** tray-only launch; Record **Screen / Area / Window / Window Area**; solid dark options bar; dual audio + cursor toggle + pause; Files List with Quick Look + Play + **Edit** (trim / Export).
 
-**Still open:** in-app Edit/trim; Convert/Compress / Rename / Remove from List; options placeholders (PiP, FPS, …).
+**Still open:** Convert/Compress / Remove from List; options placeholders (PiP, FPS, …).
 
 ## Open / build
 
@@ -50,8 +50,9 @@ EggplantRecorder/
   UI/OptionsBar/            # solid dark panel (224/224/76, bottom +16pt)
   UI/AreaSelection/         # dim overlay + handles; in-recording dashed frame + mini bar
   UI/WindowSelection/       # hover window highlight → click
-  UI/FilesList/             # library window (~800pt)
-  Services/                 # library, thumbnails, Quick Look
+  UI/FilesList/             # library window (~820pt)
+  UI/Editor/                # trim preview + export
+  Services/                 # library, thumbnails, Quick Look, trim export
 ```
 
 Code map for agents: [AGENTS.md](AGENTS.md). Product behavior: [docs/product.md](docs/product.md).
@@ -63,4 +64,4 @@ Code map for agents: [AGENTS.md](AGENTS.md). Product behavior: [docs/product.md]
 4. Record Window → hover blue dashed border → click → options (no window dropdown) → Record → `Window-….mp4`.
 5. Status item → Pause / Stop / clock (pause freezes elapsed + file timeline).
 6. Stop → MP4 in `~/Movies/EggplantRecorder/` → Files List; Preview = Quick Look, Play = default app.
-7. Right-click row → OMI-ordered menu (unimplemented items disabled).
+7. Right-click row → OMI-ordered menu; **Edit** opens trim + Export (`Name-Edit.mp4`).

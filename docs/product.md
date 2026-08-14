@@ -16,8 +16,7 @@
 ### 尚未做 / 占位
 
 - PiP 摄像头、Click Zoom、键盘捕获、倒计时、帧率/分辨率精细调节
-- Convert/Compress、Rename、VIP 等 OMI 扩展
-- 应用内 Edit / Export（下一刀优先）
+- Convert/Compress、Remove from List、VIP 等 OMI 扩展
 
 ### 身份
 
@@ -59,7 +58,7 @@
   │
   └─ Stop → MP4 写入库目录 → 弹出 Files List
        ├─ Play / Preview / Show in Finder / Delete
-       └─ Edit → 轻量裁剪 / Export（待做）
+       └─ Edit → 轻量裁剪 / Export MP4
 ```
 
 ---
@@ -99,9 +98,11 @@
 - 列：Name、Duration、Size、Type、Date、Operation
 - Preview / Play / Edit / Show in Finder / Delete（Convert/Compress、Rename 可占位禁用）
 
-### 3.5 Edit（待做）
+### 3.5 Edit
 
-- 预览 + 简单 trim + Export MP4
+- 预览 + 时间线 trim（入/出点）+ Export MP4
+- 导出为库内新文件 `Name-Edit.mp4`（已存在则 `-2`…）；系统音与麦克风分轨保留
+- 入口：Files List 右键 Edit，或 Operation 列图标
 
 ---
 
@@ -135,7 +136,7 @@
 3. Screen → 参数条 → Record；Area → 框选同时出参数条 → Record；Window → 悬停 → 点击 → 参数条；Window Area → 悬停点选 → Area 框（窗口位置）+ 参数条。
 4. 录制中：Pause + Stop + 计时；Area 有虚线框 + mini 面板；Pause 后计时停、文件无冻帧。
 5. Stop → 库目录出现 MP4 → Files List 打开并高亮。
-6. Preview / Finder / Delete / Play 可用；Edit 可二期。
+6. Preview / Finder / Delete / Play / Edit（trim + Export）可用。
 7. 无权限 / 需 Relaunch 时文案正确。
 8. 录屏不把本 app 的 Files List / 参数条录进去。
 
@@ -147,6 +148,5 @@
 |------|-----|
 | Done | 工程 + SCK 录屏（屏/窗/区）+ 双音轨 + pause |
 | Done | OMI 三栏参数条 + Window 悬停点选 + Area 框选 |
-| Done | Status Item 控制条 + Files List |
-| Next | Edit / Export |
+| Done | Files List + Edit / Export（trim → `Name-Edit.mp4`） |
 | Later | 占位功能接线；图标打磨 |

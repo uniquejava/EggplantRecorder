@@ -148,9 +148,14 @@ struct FilesListView: View {
                         tooltip: "Play",
                         action: { play(entry.path) }
                     )
+                    OperationIconButton(
+                        systemName: "slider.horizontal.2.square.on.square",
+                        tooltip: "Edit",
+                        action: { appState.showEditor(entry) }
+                    )
                 }
             }
-            .width(84)
+            .width(108)
             .alignment(.center)
         }
         .font(Self.bodyFont)
@@ -197,8 +202,7 @@ struct FilesListView: View {
     @ViewBuilder
     private func entryContextMenu(_ entry: RecordingEntry) -> some View {
         Button("Preview") { quickLook(entry.path) }
-        Button("Edit") {}
-            .disabled(true)
+        Button("Edit") { appState.showEditor(entry) }
         Divider()
         Button("Play") { play(entry.path) }
         Button("Convert/Compress") {}

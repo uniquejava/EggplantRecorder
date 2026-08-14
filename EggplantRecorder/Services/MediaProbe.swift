@@ -47,4 +47,36 @@ enum MediaProbe {
             return nil
         }
     }
+
+    /// Sparse stills for the trim filmstrip (fails soft to []).
+    static func filmstrip(
+        of url: URL,
+        duration: TimeInterval,
+        count: Int = 12,
+        maxSize: CGSize = CGSize(width: 180, height: 100)
+    ) async -> [NSImage] {
+        guard duration > 0, count > 0 else { return [] }
+        let asset = AVURLAsset(url: url)
+        let generator = AVAssetImageGenerator(asset: asset)
+        generator.appliesPreferredTrackTransform = true
+        generator.maximumSize = maxSize
+        generator.requestedTimeToleranceBefore = CMTime(seconds: 0.25, preferredTimescale: 600)
+        generator.requestedTimeToleranceAfter = CMTime(seconds: 0.25, preferredTimescale: 600)
+
+        var images: [NSImage] = []
+        images.reserveCapacity(count)
+        for i in 0..<count {
+            let seconds = duration * (Double(i) + 0.5) / Double(count)
+            let time = CMTime(seconds: seconds, preferredTimescale: 600)
+            do {
+                let (cgImage, _) = try await generator.image(at: time)
+                images.append(
+                    NSImage(cgImage: cgImage, size: NSSize(width: cgImage.width, height: cgImage.height))
+                )
+            } catch {
+                continue
+            }
+        }
+        return images
+    }
 }

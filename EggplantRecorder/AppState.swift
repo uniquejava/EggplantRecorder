@@ -27,6 +27,7 @@ final class AppState: ObservableObject {
     let areaSelection = AreaSelectionController()
     let areaRecordingChrome = AreaRecordingChromeController()
     let windowSelection = WindowSelectionController()
+    let editor = EditorController()
 
     /// Set while configuring area; consumed when OptionsBar records.
     private(set) var pendingArea: AreaSelectionResult?
@@ -56,6 +57,7 @@ final class AppState: ObservableObject {
         statusItem.install(appState: self)
         optionsBar.configure(appState: self)
         filesList.configure(appState: self)
+        editor.configure(appState: self)
         areaRecordingChrome.configure(appState: self)
         Task { await refreshRecordings() }
     }
@@ -295,6 +297,10 @@ final class AppState: ObservableObject {
             await refreshRecordings()
             filesList.show(highlightPath: highlightPath)
         }
+    }
+
+    func showEditor(_ entry: RecordingEntry) {
+        editor.show(entry: entry)
     }
 
     func refreshRecordings() async {
