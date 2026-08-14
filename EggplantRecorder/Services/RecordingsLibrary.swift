@@ -81,7 +81,53 @@ enum RecordingsLibrary {
 
     static func delete(path: String) throws {
         try ensureLibraryPath(path)
-        try FileManager.default.removeItem(atPath: path)
+        var trashed: NSURL?
+        try FileManager.default.trashItem(
+            at: URL(fileURLWithPath: path),
+            resultingItemURL: &trashed
+        )
+    }
+
+    /// Renames the file's base name (`.mp4` is kept). Returns the new absolute path.
+    @discardableResult
+    static func rename(path: String, to newBaseName: String) throws -> String {
+        try ensureLibraryPath(path)
+        let cleaned = sanitizeBaseName(newBaseName)
+        guard !cleaned.isEmpty else {
+            throw NSError(
+                domain: "RecordingsLibrary",
+                code: 2,
+                userInfo: [NSLocalizedDescriptionKey: "Name cannot be empty."]
+            )
+        }
+
+        let source = URL(fileURLWithPath: path)
+        let destination = directoryURL.appendingPathComponent(cleaned + ".mp4")
+        if source.standardizedFileURL == destination.standardizedFileURL {
+            return path
+        }
+        if FileManager.default.fileExists(atPath: destination.path) {
+            throw NSError(
+                domain: "RecordingsLibrary",
+                code: 3,
+                userInfo: [NSLocalizedDescriptionKey: "A recording named “\(cleaned)” already exists."]
+            )
+        }
+        try FileManager.default.moveItem(at: source, to: destination)
+        return destination.path
+    }
+
+    /// Strips extension / path pieces and rejects characters illegal in a single path component.
+    static func sanitizeBaseName(_ raw: String) -> String {
+        var base = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        if base.lowercased().hasSuffix(".mp4") {
+            base = String(base.dropLast(4)).trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        base = base
+            .replacingOccurrences(of: "/", with: "-")
+            .replacingOccurrences(of: ":", with: "-")
+            .replacingOccurrences(of: "\0", with: "")
+        return base
     }
 
     static func revealInFinder(path: String) throws {

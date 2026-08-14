@@ -26,7 +26,7 @@ Product requirements: [`docs/product.md`](docs/product.md).
 ## Session continuity (start here)
 
 1. Read this file + skim `docs/product.md` (flow + acceptance).
-2. Prefer launching `build/EggplantRecorder.app` (rebuild recipe below). Avoid `/Applications/EggplantRecorder.app` (often stale).
+2. After code changes: **killall → xcodebuild → open** `build/EggplantRecorder.app` (see Commands). Avoid `/Applications/EggplantRecorder.app` (often stale).
 3. Capture: ScreenCaptureKit dual audio + pause timeline; Area = `sourceRect`; Window = CGWindowList hit-test → `window:ID`; Window Area = hit-test → Area preset.
 4. Commit only if asked (`usegmail` when they want that author).
 
@@ -50,7 +50,7 @@ Product requirements: [`docs/product.md`](docs/product.md).
 - **Options bar:** bottom-center `NSPanel` (**16pt** above screen bottom), ~**224 / 224 / 76** × ~**186**, solid dark (no glass), draggable. Working: display picker (Screen), Mic, System Sound, cursor. Placeholders disabled. Grant / Relaunch copy when needed.
 - **Capture:** screen/window/area, exclude self PID, dual audio tracks, pause compresses timeline.
 - **Recording controls:** menu-bar Pause / Stop / `HH:MM:SS`; Area also gets compact solid mini bar (Restart / Discard; Annotate stub).
-- **Stop →** library MP4 → Files List (800pt), Quick Look + Play, OMI context menu.
+- **Stop →** library MP4 → Files List (820pt), Quick Look + Play, OMI context menu.
 - **Launch:** tray only on cold start.
 - **Mic:** entitlement `com.apple.security.device.audio-input` under Hardened Runtime.
 
@@ -93,7 +93,7 @@ Xcode project uses **PBXFileSystemSynchronizedRootGroup** — new files under `E
 3. **Cold launch must not open Files List:** defer `applicationShouldHandleReopen` with `readyForReopen`; no real `Settings`/`WindowGroup` at launch.
 4. **Dual audio tracks:** never mux system + mic into one `AVAssetWriterInput`.
 5. **Table tooltips:** SwiftUI `.help` often fails in `Table` — use AppKit `NSButton.toolTip`.
-6. **Files List width:** **800** wide; keep column ideals tight.
+6. **Files List width:** **820** wide; keep column ideals tight.
 7. **Area + options:** keep dim overlay while OptionsBar is up; panel level must be above the overlay so mic/Record stay clickable. Don’t name a property `toolbar` on `NSWindow` subclasses.
 8. **Area handle resize:** drag **delta** from mouseDown, never “edge = mouse point”.
 9. **Stale `/Applications`:** prefer `build/EggplantRecorder.app` after agent builds.
@@ -116,10 +116,11 @@ Xcode project uses **PBXFileSystemSynchronizedRootGroup** — new files under `E
 
 ## Commands
 
-```bash
-open build/EggplantRecorder.app
+Menu-bar apps keep the old process on a second `open` — **kill first**, then build, then open. Do **not** `open` without quitting; that just focuses the stale process.
 
-# Rebuild + install into build/ + launch
+```bash
+# Rebuild + install into build/ + relaunch (agents — always after code changes)
+killall EggplantRecorder 2>/dev/null
 xcodebuild -scheme EggplantRecorder -configuration Debug -derivedDataPath "$PWD/build/DerivedData" build \
   && rm -rf build/EggplantRecorder.app \
   && ditto "$PWD/build/DerivedData/Build/Products/Debug/EggplantRecorder.app" build/EggplantRecorder.app \
@@ -128,7 +129,7 @@ xcodebuild -scheme EggplantRecorder -configuration Debug -derivedDataPath "$PWD/
 open EggplantRecorder.xcodeproj
 ```
 
-`build/` is gitignored.
+`build/` is gitignored. Do **not** launch `/Applications/EggplantRecorder.app` (often stale).
 
 ## One-liner for the next agent
 

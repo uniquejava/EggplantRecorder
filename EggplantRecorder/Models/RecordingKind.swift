@@ -1,9 +1,13 @@
 import Foundation
 
-enum RecordingKind: String, Hashable {
+enum RecordingKind: String, Hashable, Comparable {
     case screen
     case window
     case area
+
+    static func < (lhs: RecordingKind, rhs: RecordingKind) -> Bool {
+        lhs.displayName < rhs.displayName
+    }
 
     var displayName: String {
         switch self {

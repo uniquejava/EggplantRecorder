@@ -35,15 +35,15 @@ final class FilesListController {
         let root = FilesListView(appState: appState)
         let hosting = NSHostingController(rootView: root)
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 800, height: 480),
+            contentRect: NSRect(x: 0, y: 0, width: 820, height: 480),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered,
             defer: false
         )
         window.title = "Files List"
         window.contentViewController = hosting
-        window.setContentSize(NSSize(width: 800, height: 480))
-        window.contentMinSize = NSSize(width: 800, height: 320)
+        window.setContentSize(NSSize(width: 820, height: 480))
+        window.contentMinSize = NSSize(width: 820, height: 320)
         window.center()
         window.isReleasedWhenClosed = false
         window.delegate = FilesListWindowDelegate.shared
