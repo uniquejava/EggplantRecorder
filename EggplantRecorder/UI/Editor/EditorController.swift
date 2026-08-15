@@ -26,16 +26,14 @@ final class EditorController {
             // After the window is on a screen — cascading would otherwise pin it top-left.
             placeOnScreen(window)
         }
-        NSApp.activate(ignoringOtherApps: true)
+        AppActivation.preferForeground()
     }
 
     func hide() {
         model?.teardown()
         model = nil
         window?.orderOut(nil)
-        if NSApp.windows.filter({ $0.isVisible && $0 !== window }).isEmpty {
-            NSApp.setActivationPolicy(.accessory)
-        }
+        AppActivation.preferBackgroundIfIdle(excluding: window)
     }
 
     private func install(entry: RecordingEntry) {
@@ -60,11 +58,27 @@ final class EditorController {
 
     private func handleExported(_ path: String) {
         guard let appState else { return }
+        let prefs = AppPreferences.shared
+        let originalPath = model?.path
         hide()
         appState.highlightPath = path
+
+        if prefs.deleteOriginalAfterEditing, let originalPath, originalPath != path {
+            try? RecordingsLibrary.delete(path: originalPath)
+            if appState.highlightPath == originalPath {
+                appState.highlightPath = path
+            }
+        }
+
+        if prefs.openFolderAfterEditing {
+            try? RecordingsLibrary.revealInFinder(path: path)
+        }
+
         Task {
             await appState.refreshRecordings()
-            appState.filesList.show(highlightPath: path)
+            if prefs.openFilesListAfterEditing {
+                appState.filesList.show(highlightPath: path)
+            }
         }
     }
 

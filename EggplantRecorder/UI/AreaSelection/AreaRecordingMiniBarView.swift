@@ -17,16 +17,19 @@ final class AreaRecordingMiniBarView: NSView {
     private let restartButton = NSButton()
     private let cancelButton = NSButton()
     private let confirmBanner = CancelConfirmBannerView()
+    private var barWidthConstraint: NSLayoutConstraint?
 
     private var cancelArmed = false
     private var armResetWorkItem: DispatchWorkItem?
+    private var showsTimer = true
 
     private static let barHeight: CGFloat = 34
     private static let bannerGap: CGFloat = 5
     private static let bannerHeight: CGFloat = 24
     private static let bannerWidth: CGFloat = 320
     private static let buttonSize: CGFloat = 24
-    private static let barWidth: CGFloat = 236
+    private static let barWidthWithTimer: CGFloat = 236
+    private static let barWidthWithoutTimer: CGFloat = 172
     private static let cornerRadius: CGFloat = 8
     /// Style B charcoal — matches the options panel.
     private static let panelFill = NSColor(srgbRed: 0.173, green: 0.180, blue: 0.200, alpha: 1)
@@ -124,7 +127,6 @@ final class AreaRecordingMiniBarView: NSView {
         NSLayoutConstraint.activate([
             barContainer.trailingAnchor.constraint(equalTo: trailingAnchor),
             barContainer.topAnchor.constraint(equalTo: topAnchor),
-            barContainer.widthAnchor.constraint(equalToConstant: Self.barWidth),
             barContainer.heightAnchor.constraint(equalToConstant: Self.barHeight),
 
             fill.leadingAnchor.constraint(equalTo: barContainer.leadingAnchor),
@@ -153,6 +155,9 @@ final class AreaRecordingMiniBarView: NSView {
             cancelButton.heightAnchor.constraint(equalToConstant: Self.buttonSize),
             timerLabel.widthAnchor.constraint(greaterThanOrEqualToConstant: 56),
         ])
+        let width = barContainer.widthAnchor.constraint(equalToConstant: Self.barWidthWithTimer)
+        width.isActive = true
+        barWidthConstraint = width
     }
 
     private func configureCircleButton(_ button: NSButton, image: NSImage, tooltip: String) {
@@ -208,8 +213,16 @@ final class AreaRecordingMiniBarView: NSView {
         }
     }
 
-    func update(elapsed: TimeInterval, isPaused: Bool) {
-        timerLabel.stringValue = MediaProbe.formatClock(elapsed)
+    func update(elapsed: TimeInterval, isPaused: Bool, showsTimer: Bool = true) {
+        if self.showsTimer != showsTimer {
+            self.showsTimer = showsTimer
+            timerLabel.isHidden = !showsTimer
+            barWidthConstraint?.constant = showsTimer ? Self.barWidthWithTimer : Self.barWidthWithoutTimer
+            onLayoutChange?()
+        }
+        if showsTimer {
+            timerLabel.stringValue = MediaProbe.formatClock(elapsed)
+        }
         let symbol = isPaused ? "play.fill" : "pause.fill"
         let tip = isPaused ? "Resume" : "Pause"
         pauseButton.image = Self.circleSymbolIcon(symbol)
@@ -217,6 +230,7 @@ final class AreaRecordingMiniBarView: NSView {
     }
 
     override var fittingSize: NSSize {
+        let barWidth = showsTimer ? Self.barWidthWithTimer : Self.barWidthWithoutTimer
         if cancelArmed {
             // Banner hangs left from the cancel (trailing) side; panel must be wide enough.
             return NSSize(
@@ -224,7 +238,7 @@ final class AreaRecordingMiniBarView: NSView {
                 height: Self.barHeight + Self.bannerGap + Self.bannerHeight
             )
         }
-        return NSSize(width: Self.barWidth, height: Self.barHeight)
+        return NSSize(width: barWidth, height: Self.barHeight)
     }
 
     private func clearCancelArm(notify: Bool = true) {

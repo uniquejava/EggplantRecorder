@@ -79,14 +79,20 @@ final class RecordingControlBarView: NSView {
         stopImage.isTemplate = false
         stopButton.image = stopImage
 
-        timerLabel.stringValue = MediaProbe.formatClock(appState.elapsedSeconds)
+        let showTimer = AppPreferences.shared.displayRecordingTime
+        timerLabel.isHidden = !showTimer
+        if showTimer {
+            timerLabel.stringValue = MediaProbe.formatClock(appState.elapsedSeconds)
+        }
         invalidateIntrinsicContentSize()
         onSizeChange?()
     }
 
     override var intrinsicContentSize: NSSize {
-        let timerWidth = max(timerLabel.intrinsicContentSize.width, 58)
-        return NSSize(width: 4 + 18 + 6 + 16 + 6 + timerWidth + 6, height: 22)
+        let showTimer = !timerLabel.isHidden
+        let timerWidth = showTimer ? max(timerLabel.intrinsicContentSize.width, 58) : 0
+        let timerGap: CGFloat = showTimer ? 6 : 0
+        return NSSize(width: 4 + 18 + 6 + 16 + timerGap + timerWidth + 6, height: 22)
     }
 
     var preferredWidth: CGFloat { intrinsicContentSize.width }

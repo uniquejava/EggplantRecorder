@@ -31,9 +31,15 @@ struct RecordingEntry: Identifiable, Hashable {
 }
 
 enum RecordingsLibrary {
+    private static let libraryFolderPathKey = "click.yinsb.eggplantrecorder.libraryFolderPath"
+
     static var directoryURL: URL {
-        FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Movies/EggplantRecorder", isDirectory: true)
+        let trimmed = (UserDefaults.standard.string(forKey: libraryFolderPathKey) ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
+            return RecordingsLibraryPaths.defaultFolderURL
+        }
+        return URL(fileURLWithPath: trimmed, isDirectory: true)
     }
 
     static func ensureDirectory() throws {

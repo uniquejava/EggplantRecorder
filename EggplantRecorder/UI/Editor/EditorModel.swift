@@ -18,7 +18,7 @@ final class EditorModel: ObservableObject {
     @Published var filmstrip: [NSImage] = []
     @Published var loadFailed = false
     @Published var alertMessage: String?
-    @Published var settings = ExportSettings()
+    @Published var settings = AppPreferences.shared.defaultExportSettings()
     @Published var sourceInfo: RecordingMediaInfo?
     @Published var previewPlayer: AVPlayer?
     @Published var isPreviewExport = false
@@ -186,7 +186,7 @@ final class EditorModel: ObservableObject {
             exportTask = nil
         }
         do {
-            let end = preview ? min(trimEnd, trimStart + 30) : trimEnd
+            let end = preview ? min(trimEnd, trimStart + TimeInterval(AppPreferences.shared.editPreviewSeconds)) : trimEnd
             let destination = preview
                 ? FileManager.default.temporaryDirectory
                     .appendingPathComponent("EggplantRecorder-preview-\(UUID().uuidString).mp4")

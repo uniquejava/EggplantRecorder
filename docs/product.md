@@ -40,6 +40,7 @@
   │    ├─ Record Window（悬停虚线框 → 点击 → 参数条）
   │    ├─ Record Window Area（悬停点选窗口 → 用窗口位置预设 Area → 同 Record Area）
   │    ├─ Show Files List
+  │    ├─ Preferences…
   │    └─ Quit
   │
   ├─ Screen / Area(框选中) / Window(点选后) → 屏幕底部「参数条」
@@ -112,9 +113,15 @@
 
 ### 4.1 库目录
 
-- 默认：`~/Movies/EggplantRecorder/`
+- 默认：`~/Movies/EggplantRecorder/`（Preferences 可改）
 - 文件名：`Screen-…` / `Window-…` / `Area-…`
 - 停录即落盘
+
+### 4.1a Preferences
+
+- 菜单：**Preferences…**（⌘,）；`Settings` scene + About（Fred/Shot 同款）
+- General（有用项）：保存目录、录制显示计时、停录/导出后行为、隐藏 Dock、默认分辨率/帧率/倒计时、编辑导出默认质量/声道/预览时长
+- 省略 OMI 的 Virtual Background / Shortcuts / Keyboard Event / 点击音效 / 录制提醒等未实现项
 
 ### 4.2 Capture 行为
 
@@ -135,7 +142,7 @@
 ## 5. 验收清单
 
 1. 冷启动：只有菜单栏图标。
-2. 菜单：Screen / Area / Window / Window Area / Files List / Quit。
+2. 菜单：Screen / Area / Window / Window Area / Files List / Preferences… / Quit。
 3. Screen → 参数条 → Record；Area → 框选同时出参数条 → Record；Window → 悬停 → 点击 → 参数条；Window Area → 悬停点选 → Area 框（窗口位置）+ 参数条。
 4. 录制中：Pause + Stop + 计时；Area 有虚线框 + mini 面板；Pause 后计时停、文件无冻帧。
 5. Stop → 库目录出现 MP4 → Files List 打开并高亮。

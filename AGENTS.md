@@ -41,7 +41,7 @@ Product requirements: [`docs/product.md`](docs/product.md).
 ## What’s implemented
 
 - **Idle tray:** custom `NSStatusItem` + `RecorderGlyph`.
-- **Menu:** Record Screen / Area / Window / Window Area / Show Files List / Quit.
+- **Menu:** Record Screen / Area / Window / Window Area / Show Files List / Preferences… / Quit.
 - **Area:** dim overlay + pale-blue dashed border + handles → OMI options bar (selection stays) → Record → **in-recording** dashed frame + mini control bar below selection → `Area-….mp4`. Last area rect remembered (UserDefaults).
 - **Window:** hover → blue dashed highlight → click → Options (no window dropdown). Esc cancels.
 - **Window Area:** same hover-pick as Window, then continues as Area with the window frame as the preset selection (editable; capture is `sourceRect`, not `window:ID`).
@@ -50,6 +50,7 @@ Product requirements: [`docs/product.md`](docs/product.md).
 - **Recording controls:** menu-bar Pause / Stop / `HH:MM:SS`; Area also gets compact solid mini bar (Restart / Discard; Annotate stub).
 - **Stop →** library MP4 → Files List (820pt), Quick Look + Play + Edit, OMI context menu.
 - **Edit:** Files List right-click / Operation → preview + trim handles + Export → `Name-Edit.mp4` (dual audio preserved).
+- **Preferences…** (⌘,): General (save folder, recording timer, after-record/edit actions, Dock hide, capture + export defaults) + About (Fred/Shot-style).
 - **Launch:** tray only on cold start.
 - **Mic:** entitlement `com.apple.security.device.audio-input` under Hardened Runtime.
 
@@ -62,6 +63,8 @@ EggplantRecorder/
   Models/
     RecordingKind.swift
     RecordingConfig.swift           # + CaptureFrameRate / Resolution / Countdown
+    AppPreferences.swift            # Preferences → General (UserDefaults)
+    ExportSettings.swift
   Recording/
     CaptureSession.swift            # SCK stream + AVAssetWriter lifecycle
     CaptureFilter.swift / CaptureAudio.swift / CaptureTiming.swift / CaptureError.swift
@@ -78,6 +81,7 @@ EggplantRecorder/
     Countdown/                      # pre-record number overlay
     FilesList/                      # window + table + cells
     Editor/                         # trim preview + export window
+    SettingsView.swift / AboutView.swift  # Preferences window
   Services/
     RecordingsLibrary.swift
     MediaProbe.swift
@@ -136,4 +140,4 @@ open EggplantRecorder.xcodeproj
 
 ## One-liner for the next agent
 
-**Tray → Screen / Area(live selection + options → dashed frame + mini bar while recording) / Window(hover-pick) / Window Area(hover-pick → Area preset) → OMI options (FPS / Resolution / Countdown wired) → record → Files List → right-click Edit (trim + Export) is done.** Next: Convert/Compress stubs / PiP. Do not regress Area+options z-order, area recording chrome click-through, options checkbox hit-testing, bottom-16pt panel placement, mic entitlement, Quick Look rules, or dual-audio export.
+**Tray → Screen / Area / Window / Window Area → options → record → Files List → Edit; Preferences… (General + About).** Next: Convert/Compress stubs / PiP. Do not regress Area+options z-order, area recording chrome click-through, options checkbox hit-testing, bottom-16pt panel placement, mic entitlement, Quick Look rules, dual-audio export, or Preferences `openSettings` bridge.

@@ -282,7 +282,9 @@ final class AppState: ObservableObject {
             statusItem.enterIdleMode()
             highlightPath = path
             await refreshRecordings()
-            filesList.show(highlightPath: path)
+            if AppPreferences.shared.openFilesListAfterRecording {
+                filesList.show(highlightPath: path)
+            }
         } catch {
             phase = .idle
             isPaused = false
@@ -339,6 +341,15 @@ final class AppState: ObservableObject {
         Task {
             await refreshRecordings()
             filesList.show(highlightPath: highlightPath)
+        }
+    }
+
+    func openPreferences() {
+        if let open = OpenSettingsGateway.shared.open {
+            open()
+            AppActivation.preferForeground()
+        } else {
+            NotificationCenter.default.post(name: .openAppPreferences, object: nil)
         }
     }
 

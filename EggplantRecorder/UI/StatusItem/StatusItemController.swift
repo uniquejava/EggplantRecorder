@@ -104,6 +104,14 @@ final class StatusItemController: NSObject {
         menu.addItem(.separator())
         menu.addItem(withTitle: "Show Files List", action: #selector(showFiles), keyEquivalent: "")
         menu.addItem(.separator())
+        let prefs = NSMenuItem(
+            title: "Preferences...",
+            action: #selector(openPreferences),
+            keyEquivalent: ","
+        )
+        prefs.keyEquivalentModifierMask = [.command]
+        menu.addItem(prefs)
+        menu.addItem(.separator())
         menu.addItem(withTitle: "Quit EggplantRecorder", action: #selector(quit), keyEquivalent: "q")
         for item in menu.items where item.action != nil {
             item.target = self
@@ -129,6 +137,10 @@ final class StatusItemController: NSObject {
 
     @objc private func showFiles() {
         appState?.showFilesList()
+    }
+
+    @objc private func openPreferences() {
+        appState?.openPreferences()
     }
 
     @objc private func quit() {

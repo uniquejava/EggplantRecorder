@@ -20,15 +20,13 @@ final class FilesListController {
         }
         NSApp.setActivationPolicy(.regular)
         window?.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
+        AppActivation.preferForeground()
         Task { await appState.refreshRecordings() }
     }
 
     func hide() {
         window?.orderOut(nil)
-        if NSApp.windows.filter({ $0.isVisible && $0 !== window }).isEmpty {
-            NSApp.setActivationPolicy(.accessory)
-        }
+        AppActivation.preferBackgroundIfIdle(excluding: window)
     }
 
     private func createWindow(appState: AppState) {

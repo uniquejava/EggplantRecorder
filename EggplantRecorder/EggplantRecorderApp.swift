@@ -2,18 +2,60 @@ import AppKit
 import Quartz
 import SwiftUI
 
+extension Notification.Name {
+    static let openAppPreferences = Notification.Name("EggplantRecorder.openAppPreferences")
+}
+
 @main
 struct EggplantRecorderApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
     var body: some Scene {
-        // Status item is AppKit-owned. Avoid Settings/WindowGroup so launch
-        // does not materialize any window — tray icon only.
+        // Invisible MenuBarExtra hosts openSettings bridge. Real tray is AppKit NSStatusItem.
         MenuBarExtra(isInserted: .constant(false)) {
             EmptyView()
         } label: {
             EmptyView()
+                .background(PreferencesEnvironmentBridge())
         }
+
+        Settings {
+            SettingsView()
+                .onAppear {
+                    AppActivation.preferForeground()
+                }
+                .onDisappear {
+                    AppActivation.preferBackgroundIfIdle()
+                }
+        }
+    }
+}
+
+/// Bridges AppKit status menus → SwiftUI `openSettings` (required; `showSettingsWindow:` is rejected).
+private struct PreferencesEnvironmentBridge: View {
+    @Environment(\.openSettings) private var openSettings
+
+    var body: some View {
+        Color.clear
+            .frame(width: 0, height: 0)
+            .accessibilityHidden(true)
+            .onAppear {
+                OpenSettingsGateway.shared.open = { [openSettings] in
+                    openSettings()
+                }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .openAppPreferences)) { _ in
+                OpenSettingsGateway.shared.open?()
+                AppActivation.preferForeground()
+            }
+    }
+}
+
+@MainActor
+enum OpenSettingsGateway {
+    static let shared = Gateway()
+    final class Gateway {
+        var open: (() -> Void)?
     }
 }
 
@@ -22,7 +64,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var readyForReopen = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        NSApp.setActivationPolicy(.accessory)
+        AppActivation.applyPreferredPolicy()
         AppState.shared.bootstrap()
         QuickLookController.shared.install()
         // Defer so launch-time reopen does not pop Files List.

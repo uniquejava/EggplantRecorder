@@ -45,24 +45,12 @@ final class OptionsBarModel: ObservableObject {
 
     private weak var appState: AppState?
 
-    private enum DefaultsKey {
-        static let frameRate = "click.yinsb.eggplantrecorder.captureFrameRate"
-        static let resolution = "click.yinsb.eggplantrecorder.captureResolution"
-        static let countdown = "click.yinsb.eggplantrecorder.captureCountdown"
-    }
-
     init(appState: AppState) {
         self.appState = appState
-        let storedFPS = UserDefaults.standard.integer(forKey: DefaultsKey.frameRate)
-        self.frameRate = CaptureFrameRate(rawValue: storedFPS) ?? .fps30
-        let storedRes = UserDefaults.standard.string(forKey: DefaultsKey.resolution) ?? ""
-        self.resolution = CaptureResolution(rawValue: storedRes) ?? .native
-        if UserDefaults.standard.object(forKey: DefaultsKey.countdown) == nil {
-            self.countdown = .none
-        } else {
-            let stored = UserDefaults.standard.integer(forKey: DefaultsKey.countdown)
-            self.countdown = CaptureCountdown(rawValue: stored) ?? .none
-        }
+        let prefs = AppPreferences.shared
+        self.frameRate = prefs.defaultFrameRate
+        self.resolution = prefs.defaultResolution
+        self.countdown = prefs.defaultCountdown
     }
 
     var frameRateItems: [OptionsMenuItem] {
@@ -136,7 +124,15 @@ final class OptionsBarModel: ObservableObject {
     func prepare(mode: RecordingKind) {
         self.mode = mode
         bannerMessage = nil
+        syncCaptureDefaultsFromPreferences()
         Task { await reload() }
+    }
+
+    private func syncCaptureDefaultsFromPreferences() {
+        let prefs = AppPreferences.shared
+        frameRate = prefs.defaultFrameRate
+        resolution = prefs.defaultResolution
+        countdown = prefs.defaultCountdown
     }
 
     /// Called while the area overlay is live so Size / Record enablement stay in sync.
@@ -373,8 +369,9 @@ final class OptionsBarModel: ObservableObject {
     }
 
     private func persist() {
-        UserDefaults.standard.set(frameRate.rawValue, forKey: DefaultsKey.frameRate)
-        UserDefaults.standard.set(resolution.rawValue, forKey: DefaultsKey.resolution)
-        UserDefaults.standard.set(countdown.rawValue, forKey: DefaultsKey.countdown)
+        let prefs = AppPreferences.shared
+        prefs.defaultFrameRate = frameRate
+        prefs.defaultResolution = resolution
+        prefs.defaultCountdown = countdown
     }
 }

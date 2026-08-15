@@ -84,7 +84,8 @@ final class AreaRecordingMiniPanel: NSPanel {
         guard let appState else { return }
         chrome.update(
             elapsed: appState.elapsedSeconds,
-            isPaused: appState.isPaused
+            isPaused: appState.isPaused,
+            showsTimer: AppPreferences.shared.displayRecordingTime
         )
     }
 
