@@ -15,7 +15,7 @@ Native macOS **15+** menu-bar screen recorder (SwiftUI + AppKit), OMI-inspired.
 
 **On `main`:** tray-only launch; Record **Screen / Area / Window / Window Area**; solid dark options bar (FPS / Resolution / Countdown); dual audio + cursor toggle + pause; Files List with Quick Look + Play + **Edit** (trim / Export).
 
-**Still open:** Convert/Compress / Remove from List; PiP, Click Zoom, keyboard overlay, timed start.
+**Still open:** Convert/Compress (stub); PiP, Click Zoom, keyboard overlay, timed start.
 
 ## Open / build
 

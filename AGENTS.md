@@ -34,7 +34,7 @@ Product requirements: [`docs/product.md`](docs/product.md).
 
 | Priority | Item | Notes |
 |----------|------|--------|
-| Medium | OMI context stubs | Convert/Compress, Remove from List — menu present, disabled (`FilesListView`) |
+| Medium | OMI Convert/Compress | Menu present, disabled (`FilesListView`) — implement later |
 | Low | Remaining options placeholders | PiP / Click Zoom / Keyboard / Timing Recording |
 | Low | Dock / app icon polish | Done — `AppIcon.appiconset` + `scripts/generate_app_icons.py` (see `docs/app-icon.md`) |
 
@@ -143,4 +143,4 @@ Stable path for docs / manual open: `build/Build/Products/Debug/EggplantRecorder
 
 ## One-liner for the next agent
 
-**Tray → Screen / Area / Window / Window Area → options → record → Files List → Edit; Preferences… (General + About).** Next: Convert/Compress stubs / PiP. Do not regress Area+options z-order, area recording chrome click-through, options checkbox hit-testing, bottom-16pt panel placement, mic entitlement, Quick Look rules, dual-audio export, or Preferences `openSettings` bridge.
+**Tray → Screen / Area / Window / Window Area → options → record → Files List → Edit; Preferences… (General + About).** Next: Convert/Compress / PiP. Do not regress Area+options z-order, area recording chrome click-through, options checkbox hit-testing, bottom-16pt panel placement, mic entitlement, Quick Look rules, dual-audio export, or Preferences `openSettings` bridge.

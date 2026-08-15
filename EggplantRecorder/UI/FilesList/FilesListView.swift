@@ -210,8 +210,6 @@ struct FilesListView: View {
         Divider()
         Button("Rename") { beginRename(entry) }
         Button("Show in Finder") { try? RecordingsLibrary.revealInFinder(path: entry.path) }
-        Button("Remove from List") {}
-            .disabled(true)
         Button("Delete", role: .destructive) { confirmMoveToTrash(entry) }
     }
 

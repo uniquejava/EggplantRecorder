@@ -16,7 +16,7 @@
 ### 尚未做 / 占位
 
 - PiP 摄像头、Click Zoom、键盘捕获、定时开录
-- Convert/Compress、Remove from List、VIP 等 OMI 扩展
+- Convert/Compress、VIP 等 OMI 扩展
 
 ### 身份
 
