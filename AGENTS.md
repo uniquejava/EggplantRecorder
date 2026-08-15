@@ -172,6 +172,23 @@ Do **not** open a different DerivedData path, and do **not** skip `-derivedDataP
 
 Stable path for docs / manual open: `build/Build/Products/Debug/EggplantRecorder.app` (also mirrored historically as `build/EggplantRecorder.app` when agents ditto’d; prefer the Products path above).
 
+### CI / Release (Fred-style)
+
+| Workflow | Trigger | What it does |
+|----------|---------|--------------|
+| `.github/workflows/ci.yml` | Push / PR to `main` | Release build (ad-hoc signed) |
+| `.github/workflows/release.yml` | Tag `v*` (or manual dispatch) | Archive → DMG → GitHub Release |
+
+Bump `MARKETING_VERSION` in `EggplantRecorder.xcodeproj` (`Info.plist` uses `$(MARKETING_VERSION)`), commit, then:
+
+```bash
+git tag v0.1.0
+git push origin main
+git push origin v0.1.0
+```
+
+Actions builds `EggplantRecorder-v0.1.0.dmg` (ad-hoc, not notarized). Gatekeeper may warn; after install: `xattr -cr /Applications/EggplantRecorder.app`.
+
 ### Driving the UI from an agent (works — used to repro audit #1)
 
 Needs Accessibility granted to the terminal app (iTerm) once. Then:
