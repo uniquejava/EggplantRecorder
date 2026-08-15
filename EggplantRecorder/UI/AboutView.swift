@@ -6,8 +6,9 @@ struct AboutView: View {
         VStack(spacing: 12) {
             Spacer(minLength: 0)
 
-            Image(nsImage: NSApp.applicationIconImage)
+            Image(nsImage: Self.appIconImage)
                 .resizable()
+                .interpolation(.high)
                 .frame(width: 72, height: 72)
 
             Text(AppAboutInfo.appName)
@@ -50,6 +51,22 @@ struct AboutView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(28)
         .background(Color(nsColor: .windowBackgroundColor))
+    }
+
+    /// LSUIElement apps often leave `NSApp.applicationIconImage` as the generic
+    /// icon even when `AppIcon.appiconset` is present — load catalog / icns /
+    /// workspace icon explicitly (EggplantShot About used applicationIconImage
+    /// and worked; Recorder was still showing the default).
+    private static var appIconImage: NSImage {
+        if let named = NSImage(named: "AppIcon"), named.size.width > 0 {
+            return named
+        }
+        if let url = Bundle.main.url(forResource: "AppIcon", withExtension: "icns"),
+           let fromFile = NSImage(contentsOf: url)
+        {
+            return fromFile
+        }
+        return NSWorkspace.shared.icon(forFile: Bundle.main.bundlePath)
     }
 }
 

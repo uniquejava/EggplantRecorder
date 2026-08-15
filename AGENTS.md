@@ -21,12 +21,12 @@ Product requirements: [`docs/product.md`](docs/product.md).
 | UI reference | sibling `EggplantFred` (launcher/panels); OMI for product UX |
 | Window pick reference | sibling `EggplantShot` (`WindowHitTester` / hover highlight) |
 | Menu bar icon | `RecorderGlyph` template PDF — follow `EggplantFred/docs/menu-bar-icon.md` |
-| Stable Debug `.app` | `build/EggplantRecorder.app` (see Commands) |
+| Stable Debug `.app` | `build/Build/Products/Debug/EggplantRecorder.app` (see Commands) |
 
 ## Session continuity (start here)
 
 1. Read this file + skim `docs/product.md` (flow + acceptance).
-2. After code changes: **killall → xcodebuild → open** `build/EggplantRecorder.app` (see Commands). Avoid `/Applications/EggplantRecorder.app` (often stale).
+2. After code changes: **killall → xcodebuild `-derivedDataPath build` → open** `build/Build/Products/Debug/EggplantRecorder.app` (see Commands). Avoid `/Applications` and Xcode’s default DerivedData (often stale).
 3. Capture: ScreenCaptureKit dual audio + pause timeline; Area = `sourceRect`; Window = CGWindowList hit-test → `window:ID`; Window Area = hit-test → Area preset. Options FPS / Resolution / Countdown apply at capture time.
 4. Commit only if asked (`usegmail` when they want that author).
 
@@ -36,7 +36,7 @@ Product requirements: [`docs/product.md`](docs/product.md).
 |----------|------|--------|
 | Medium | OMI context stubs | Convert/Compress, Remove from List — menu present, disabled (`FilesListView`) |
 | Low | Remaining options placeholders | PiP / Click Zoom / Keyboard / Timing Recording |
-| Low | Dock / app icon polish | |
+| Low | Dock / app icon polish | Done — `AppIcon.appiconset` + `scripts/generate_app_icons.py` (see `docs/app-icon.md`) |
 
 ## What’s implemented
 
@@ -102,7 +102,7 @@ Xcode project uses **PBXFileSystemSynchronizedRootGroup** — new files under `E
 6. **Files List width:** **820** wide; keep column ideals tight.
 7. **Area + options:** keep dim overlay while OptionsBar is up; panel level must be above the overlay so mic/Record stay clickable. Don’t name a property `toolbar` on `NSWindow` subclasses.
 8. **Area handle resize:** drag **delta** from mouseDown, never “edge = mouse point”.
-9. **Stale `/Applications`:** prefer `build/EggplantRecorder.app` after agent builds.
+9. **Stale `/Applications` / default DerivedData:** prefer `build/Build/Products/Debug/EggplantRecorder.app` after agent builds.
 10. **Options checkbox:** unchecked must stay hittable (`.contentShape` / non-clear fill).
 11. **Options chrome:** solid fill (no outer SwiftUI padding / no glass halo). Open at `screen.frame.minY + 16`, bottom-centered.
 12. **Window pick:** hover+click only; snapshot hit-tester before overlays; exclude own PID.
@@ -123,20 +123,23 @@ Xcode project uses **PBXFileSystemSynchronizedRootGroup** — new files under `E
 
 ## Commands
 
-Menu-bar apps keep the old process on a second `open` — **kill first**, then build, then open. Do **not** `open` without quitting; that just focuses the stale process.
+**Always** pass `-derivedDataPath build` (Shot-style) so the binary lands at a stable path. Without it, `xcodebuild` writes to `~/Library/Developer/Xcode/DerivedData/...` and you can launch a **stale** app.
+
+Menu-bar apps keep the old process on a second `open` — **kill first**, then build, then open.
 
 ```bash
-# Rebuild + install into build/ + relaunch (agents — always after code changes)
+# Rebuild + relaunch (agents — always after code changes)
 killall EggplantRecorder 2>/dev/null
-xcodebuild -scheme EggplantRecorder -configuration Debug -derivedDataPath "$PWD/build/DerivedData" build \
-  && rm -rf build/EggplantRecorder.app \
-  && ditto "$PWD/build/DerivedData/Build/Products/Debug/EggplantRecorder.app" build/EggplantRecorder.app \
-  && open build/EggplantRecorder.app
+xcodebuild -scheme EggplantRecorder -configuration Debug -derivedDataPath build build
+open build/Build/Products/Debug/EggplantRecorder.app
 
 open EggplantRecorder.xcodeproj
 ```
 
-`build/` is gitignored. Do **not** launch `/Applications/EggplantRecorder.app` (often stale).
+Do **not** open a different DerivedData path, and do **not** skip `-derivedDataPath build`.
+`build/` is gitignored. Do **not** launch `/Applications/EggplantRecorder.app` (often stale — still has old `icons.icns`).
+
+Stable path for docs / manual open: `build/Build/Products/Debug/EggplantRecorder.app` (also mirrored historically as `build/EggplantRecorder.app` when agents ditto’d; prefer the Products path above).
 
 ## One-liner for the next agent
 
