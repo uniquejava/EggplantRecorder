@@ -4,7 +4,7 @@
 
 [English](./README.md)
 
-预编译 DMG 见 **[Releases](https://github.com/uniquejava/EggplantRecorder/releases)** — 推送 `v*` 标签即可自动打包。
+预编译安装包见 **[Releases](https://github.com/uniquejava/EggplantRecorder/releases)**。
 
 <p align="center">
   <img src="./docs/screenshot.png" alt="EggplantRecorder — 文件列表与参数条" width="720">

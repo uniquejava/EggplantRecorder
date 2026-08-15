@@ -4,7 +4,7 @@ Native **macOS 15+** menu-bar screen recorder — pick screen, area, or window, 
 
 [简体中文](./README_zh.md)
 
-Prebuilt DMGs are on **[Releases](https://github.com/uniquejava/EggplantRecorder/releases)** — push a `v*` tag to build one.
+Download prebuilt DMGs from **[Releases](https://github.com/uniquejava/EggplantRecorder/releases)**.
 
 <p align="center">
   <img src="./docs/screenshot.png" alt="EggplantRecorder — Files List and options bar" width="720">
