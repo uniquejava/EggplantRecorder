@@ -7,6 +7,8 @@ enum AreaHandlePosition: CaseIterable {
 final class AreaSelectionCanvas: NSView {
     var onBeginEditing: (() -> Void)?
     var onSelectionChanged: (() -> Void)?
+    /// When true, mouse does not create / move / resize the selection (countdown).
+    var isLocked = false
 
     private(set) var selectionInWindowCoords: CGRect?
     private var dragKind: DragKind = .none
@@ -107,6 +109,7 @@ final class AreaSelectionCanvas: NSView {
     }
 
     override func mouseDown(with event: NSEvent) {
+        guard !isLocked else { return }
         let point = convert(event.locationInWindow, from: nil)
         onBeginEditing?()
 
@@ -133,6 +136,7 @@ final class AreaSelectionCanvas: NSView {
     }
 
     override func mouseDragged(with event: NSEvent) {
+        guard !isLocked else { return }
         let point = convert(event.locationInWindow, from: nil)
         switch dragKind {
         case .none:
@@ -164,6 +168,7 @@ final class AreaSelectionCanvas: NSView {
     }
 
     override func mouseUp(with event: NSEvent) {
+        guard !isLocked else { return }
         if let selection = selectionInWindowCoords, selection.width < minSize || selection.height < minSize {
             var r = selection
             let area = bounds

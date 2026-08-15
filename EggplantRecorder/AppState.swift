@@ -5,6 +5,7 @@ import Foundation
 enum AppPhase {
     case idle
     case configuring
+    case countdown
     case recording
 }
 
@@ -28,6 +29,7 @@ final class AppState: ObservableObject {
     let areaRecordingChrome = AreaRecordingChromeController()
     let windowSelection = WindowSelectionController()
     let editor = EditorController()
+    let countdown = CountdownController()
 
     /// Set while configuring area; consumed when OptionsBar records.
     private(set) var pendingArea: AreaSelectionResult?
@@ -63,7 +65,7 @@ final class AppState: ObservableObject {
     }
 
     func showOptions(mode: RecordingKind, anchorRect: CGRect? = nil) {
-        guard phase != .recording else { return }
+        guard phase != .recording, phase != .countdown else { return }
         // Area keeps its dim overlay while the options panel is up (OMI-like).
         if mode != .area {
             areaSelection.hide()
@@ -76,7 +78,7 @@ final class AppState: ObservableObject {
     }
 
     func showAreaSelection(preset: (displayID: CGDirectDisplayID, sourceRect: CGRect)? = nil) {
-        guard phase != .recording else { return }
+        guard phase != .recording, phase != .countdown else { return }
         optionsBar.hide()
         windowSelection.hide()
         pendingArea = nil
@@ -102,7 +104,7 @@ final class AppState: ObservableObject {
     }
 
     func showWindowSelection() {
-        guard phase != .recording else { return }
+        guard phase != .recording, phase != .countdown else { return }
         optionsBar.hide()
         areaSelection.hide()
         pendingArea = nil
@@ -124,7 +126,7 @@ final class AppState: ObservableObject {
 
     /// Hover-pick a window, then continue as Area with that window’s frame as the selection.
     func showWindowAreaSelection() {
-        guard phase != .recording else { return }
+        guard phase != .recording, phase != .countdown else { return }
         optionsBar.hide()
         areaSelection.hide()
         pendingArea = nil
@@ -148,6 +150,10 @@ final class AppState: ObservableObject {
     }
 
     func hideOptions() {
+        if phase == .countdown {
+            countdown.cancel()
+            return
+        }
         optionsBar.hide()
         areaSelection.hide()
         if phase == .configuring {
@@ -157,8 +163,12 @@ final class AppState: ObservableObject {
         }
     }
 
-    func startRecording(config: RecordingConfig) async {
+    func startRecording(config: RecordingConfig, skipCountdown: Bool = false) async {
         lastErrorMessage = nil
+        if !skipCountdown, config.countdown != .none {
+            let proceeded = await runCountdown(for: config)
+            guard proceeded else { return }
+        }
         do {
             try RecordingsLibrary.ensureDirectory()
             let output = RecordingsLibrary.makeOutputURL(kind: config.kind)
@@ -204,8 +214,41 @@ final class AppState: ObservableObject {
             }
         } catch {
             lastErrorMessage = error.localizedDescription
+            phase = .configuring
+            areaSelection.setSelectionLocked(false)
             optionsBar.showError(error.localizedDescription)
         }
+    }
+
+    /// Hide options, show the number overlay, Esc cancels back to the options bar.
+    private func runCountdown(for config: RecordingConfig) async -> Bool {
+        optionsBar.hide()
+        areaSelection.setSelectionLocked(true)
+        areaSelection.isEscapeEnabled = false
+        phase = .countdown
+        let screen = countdownScreen(for: config)
+        let proceeded = await countdown.run(seconds: config.countdown.rawValue, on: screen)
+        areaSelection.setSelectionLocked(false)
+        areaSelection.isEscapeEnabled = true
+        if proceeded {
+            return true
+        }
+        phase = .configuring
+        optionsBar.show(mode: config.kind)
+        return false
+    }
+
+    private func countdownScreen(for config: RecordingConfig) -> NSScreen? {
+        if config.kind == .area, let area = pendingArea {
+            return NSScreen.screens.first(where: { $0.displayID == area.displayID })
+        }
+        if config.kind == .window, let hit = pendingWindow?.hit {
+            return NSScreen.screens.first(where: { $0.frame.intersects(hit.frame) })
+        }
+        if let displayID = Self.displayID(from: config.sourceID) {
+            return NSScreen.screens.first(where: { $0.displayID == displayID })
+        }
+        return NSScreen.main
     }
 
     func togglePause() {
@@ -289,7 +332,7 @@ final class AppState: ObservableObject {
         phase = .idle
         isPaused = false
         statusItem.enterIdleMode()
-        await startRecording(config: config)
+        await startRecording(config: config, skipCountdown: true)
     }
 
     func showFilesList() {
@@ -308,6 +351,9 @@ final class AppState: ObservableObject {
     }
 
     func quit() {
+        if phase == .countdown {
+            countdown.cancel()
+        }
         if phase == .recording {
             Task {
                 areaRecordingChrome.hide()

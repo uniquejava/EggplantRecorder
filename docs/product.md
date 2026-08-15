@@ -15,7 +15,7 @@
 
 ### 尚未做 / 占位
 
-- PiP 摄像头、Click Zoom、键盘捕获、倒计时、帧率/分辨率精细调节
+- PiP 摄像头、Click Zoom、键盘捕获、定时开录
 - Convert/Compress、Remove from List、VIP 等 OMI 扩展
 
 ### 身份
@@ -45,7 +45,8 @@
   ├─ Screen / Area(框选中) / Window(点选后) → 屏幕底部「参数条」
   │    ├─ Screen：显示器下拉；Window / Area：无源下拉
   │    ├─ System Sound / Microphone（+ 输入设备）/ Capture Mouse Cursor
-  │    └─ 红色 Record → 开始录制，参数条（与 Area 遮罩）关闭
+  │    ├─ Frame Rate / Resolution / Count Down
+  │    └─ 红色 Record →（可选倒计时）开始录制，参数条（与 Area 遮罩）关闭
   │
   ├─ 录制中 → 菜单栏控制条（Screen / Window）；Area 另见下方虚线框 + mini 面板
   │    ├─ Pause / Resume
@@ -89,6 +90,7 @@
 - 下拉 option 层用紧凑 `NSMenu`（约 11pt），不是系统默认大字 Menu
 - Screen：显示器下拉；Window / Area：无源下拉（点选 / 框选已完成）
 - System Sound、Microphone（+ 设备）、Capture Mouse Cursor
+- Frame Rate（15 / 24 / 30 / 60）、Resolution（Native / 1080p / 720p，仅当源更高时）、Count Down（none / 3s / 5s / 10s）
 - 右侧红色录制圆钮；右上角关闭
 - 权限文案：Grant access / Open Settings；列表空 → **Relaunch**
 
@@ -122,6 +124,7 @@
 4. Mic：开录前申请 Microphone TCC；Hardened Runtime 需 `device.audio-input`
 5. Pause：跳过写 sample，压缩时间线（无冻帧）
 6. Area：`sourceRect`；Window：悬停点选 → `window:ID`；Window Area：悬停点选 → 窗口 frame 预设 Area（之后同 Area）
+7. Frame Rate → `SCStreamConfiguration.minimumFrameInterval`；Resolution 按高度上限缩小输出（不放大）；Count Down 开录前叠数字，Esc 取消
 
 ### 4.3 权限
 
@@ -149,4 +152,5 @@
 | Done | 工程 + SCK 录屏（屏/窗/区）+ 双音轨 + pause |
 | Done | OMI 三栏参数条 + Window 悬停点选 + Area 框选 |
 | Done | Files List + Edit / Export（trim → `Name-Edit.mp4`） |
-| Later | 占位功能接线；图标打磨 |
+| Done | 参数条 Frame Rate / Resolution / Count Down |
+| Later | PiP / Click Zoom / Keyboard / Timing Recording |

@@ -71,6 +71,10 @@ final class AreaOverlayWindow: NSWindow {
         canvas.clearSelection()
     }
 
+    func setSelectionLocked(_ locked: Bool) {
+        canvas.isLocked = locked
+    }
+
     func makeResult() -> AreaSelectionResult? {
         guard let screen, let rect = canvas.selectionInWindowCoords, rect.width >= 2, rect.height >= 2 else {
             return nil

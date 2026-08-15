@@ -6,7 +6,7 @@ macOS **15+** menu-bar screen recorder (OMI-like). **SwiftUI + AppKit**.
 
 Product requirements: [`docs/product.md`](docs/product.md).
 
-**Status (2026-08-14):** MVP + Area + Window hover-pick + solid options bar + in-app Edit/trim/export on `main`.
+**Status (2026-08-15):** MVP + Area + Window hover-pick + solid options bar (FPS / Resolution / Countdown) + in-app Edit/trim/export on `main`.
 
 ## Identity
 
@@ -27,7 +27,7 @@ Product requirements: [`docs/product.md`](docs/product.md).
 
 1. Read this file + skim `docs/product.md` (flow + acceptance).
 2. After code changes: **killall → xcodebuild → open** `build/EggplantRecorder.app` (see Commands). Avoid `/Applications/EggplantRecorder.app` (often stale).
-3. Capture: ScreenCaptureKit dual audio + pause timeline; Area = `sourceRect`; Window = CGWindowList hit-test → `window:ID`; Window Area = hit-test → Area preset.
+3. Capture: ScreenCaptureKit dual audio + pause timeline; Area = `sourceRect`; Window = CGWindowList hit-test → `window:ID`; Window Area = hit-test → Area preset. Options FPS / Resolution / Countdown apply at capture time.
 4. Commit only if asked (`usegmail` when they want that author).
 
 ### Suggested next work
@@ -35,7 +35,7 @@ Product requirements: [`docs/product.md`](docs/product.md).
 | Priority | Item | Notes |
 |----------|------|--------|
 | Medium | OMI context stubs | Convert/Compress, Remove from List — menu present, disabled (`FilesListView`) |
-| Low | Wire options placeholders | PiP / Click Zoom / Keyboard / FPS / Resolution / Countdown → `OptionsBarColumns` + `OptionsBarModel` |
+| Low | Remaining options placeholders | PiP / Click Zoom / Keyboard / Timing Recording |
 | Low | Dock / app icon polish | |
 
 ## What’s implemented
@@ -45,7 +45,7 @@ Product requirements: [`docs/product.md`](docs/product.md).
 - **Area:** dim overlay + pale-blue dashed border + handles → OMI options bar (selection stays) → Record → **in-recording** dashed frame + mini control bar below selection → `Area-….mp4`. Last area rect remembered (UserDefaults).
 - **Window:** hover → blue dashed highlight → click → Options (no window dropdown). Esc cancels.
 - **Window Area:** same hover-pick as Window, then continues as Area with the window frame as the preset selection (editable; capture is `sourceRect`, not `window:ID`).
-- **Options bar:** bottom-center `NSPanel` (**16pt** above screen bottom), ~**224 / 224 / 76** × ~**186**, solid dark (no glass), draggable. Working: display picker (Screen), Mic, System Sound, cursor. Placeholders disabled. Grant / Relaunch copy when needed.
+- **Options bar:** bottom-center `NSPanel` (**16pt** above screen bottom), ~**224 / 224 / 76** × ~**186**, solid dark (no glass), draggable. Working: display picker (Screen), Mic, System Sound, cursor, **FPS / Resolution / Countdown**. PiP / Click Zoom / Keyboard / Timing Recording still placeholders. Grant / Relaunch copy when needed.
 - **Capture:** screen/window/area, exclude self PID, dual audio tracks, pause compresses timeline.
 - **Recording controls:** menu-bar Pause / Stop / `HH:MM:SS`; Area also gets compact solid mini bar (Restart / Discard; Annotate stub).
 - **Stop →** library MP4 → Files List (820pt), Quick Look + Play + Edit, OMI context menu.
@@ -61,7 +61,7 @@ EggplantRecorder/
   AppState.swift                    # coordinator: phase + pendingArea / pendingWindow
   Models/
     RecordingKind.swift
-    RecordingConfig.swift
+    RecordingConfig.swift           # + CaptureFrameRate / Resolution / Countdown
   Recording/
     CaptureSession.swift            # SCK stream + AVAssetWriter lifecycle
     CaptureFilter.swift / CaptureAudio.swift / CaptureTiming.swift / CaptureError.swift
@@ -75,6 +75,7 @@ EggplantRecorder/
     OptionsBar/                     # Controller, Model, View, Columns, Controls
     AreaSelection/                  # pick overlay + in-recording chrome (border / mini bar)
     WindowSelection/                # hover-pick controller + overlay
+    Countdown/                      # pre-record number overlay
     FilesList/                      # window + table + cells
     Editor/                         # trim preview + export window
   Services/
@@ -135,4 +136,4 @@ open EggplantRecorder.xcodeproj
 
 ## One-liner for the next agent
 
-**Tray → Screen / Area(live selection + options → dashed frame + mini bar while recording) / Window(hover-pick) / Window Area(hover-pick → Area preset) → OMI options → record → Files List → right-click Edit (trim + Export) is done.** Next: Convert/Compress stubs / options placeholders. Do not regress Area+options z-order, area recording chrome click-through, options checkbox hit-testing, bottom-16pt panel placement, mic entitlement, Quick Look rules, or dual-audio export.
+**Tray → Screen / Area(live selection + options → dashed frame + mini bar while recording) / Window(hover-pick) / Window Area(hover-pick → Area preset) → OMI options (FPS / Resolution / Countdown wired) → record → Files List → right-click Edit (trim + Export) is done.** Next: Convert/Compress stubs / PiP. Do not regress Area+options z-order, area recording chrome click-through, options checkbox hit-testing, bottom-16pt panel placement, mic entitlement, Quick Look rules, or dual-audio export.

@@ -19,6 +19,8 @@ final class RecorderController: ObservableObject {
             microphoneDeviceID: config.microphoneDeviceID,
             excludePID: excludePID,
             showCursor: config.showCursor,
+            frameRate: config.frameRate,
+            resolution: config.resolution,
             areaSourceRect: config.areaSourceRect,
             areaPixelWidth: config.areaPixelWidth,
             areaPixelHeight: config.areaPixelHeight

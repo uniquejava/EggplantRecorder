@@ -125,6 +125,45 @@ struct OptionsPillLabel: View {
     }
 }
 
+struct OptionsPillMenu: View {
+    let text: String
+    let items: [OptionsMenuItem]
+    let onSelect: (String) -> Void
+
+    private let fieldFill = Color(red: 0.122, green: 0.129, blue: 0.145)
+    private let fieldStroke = Color(red: 0.290, green: 0.306, blue: 0.341)
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Text(text)
+                .font(.system(size: 10.5, weight: .semibold))
+                .foregroundStyle(Color.white.opacity(0.9))
+                .lineLimit(1)
+            Image(systemName: "chevron.down")
+                .font(.system(size: 7, weight: .semibold))
+                .foregroundStyle(.white.opacity(0.4))
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 3)
+        .background(
+            RoundedRectangle(cornerRadius: 4, style: .continuous)
+                .fill(fieldFill)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 4, style: .continuous)
+                        .stroke(fieldStroke, lineWidth: 1)
+                )
+        )
+        .fixedSize(horizontal: true, vertical: false)
+        .contentShape(Rectangle())
+        .overlay {
+            if !items.isEmpty {
+                CompactMenuAnchor(items: items, onSelect: onSelect)
+            }
+        }
+        .allowsHitTesting(!items.isEmpty)
+    }
+}
+
 /// Unchecked fill must not be `Color.clear` — SwiftUI skips hit-testing on clear fills.
 struct OptionsCheckbox: View {
     @Binding var isOn: Bool

@@ -10,6 +10,8 @@ final class AreaSelectionController {
     private var onSelectionChanged: ((AreaSelectionResult?) -> Void)?
     private var onCancel: (() -> Void)?
     private var escapeMonitor: Any?
+    /// False while a countdown overlay owns Escape.
+    var isEscapeEnabled = true
 
     var isVisible: Bool { !overlayWindows.isEmpty }
 
@@ -56,6 +58,7 @@ final class AreaSelectionController {
 
         escapeMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             if event.keyCode == 53 { // Escape
+                guard self?.isEscapeEnabled == true else { return event }
                 self?.cancel()
                 return nil
             }
@@ -63,7 +66,12 @@ final class AreaSelectionController {
         }
     }
 
+    func setSelectionLocked(_ locked: Bool) {
+        overlayWindows.forEach { $0.setSelectionLocked(locked) }
+    }
+
     func hide() {
+        overlayWindows.forEach { $0.setSelectionLocked(false) }
         if let escapeMonitor {
             NSEvent.removeMonitor(escapeMonitor)
             self.escapeMonitor = nil
@@ -71,6 +79,7 @@ final class AreaSelectionController {
         overlayWindows.forEach { $0.orderOut(nil) }
         overlayWindows.removeAll()
         activeScreenID = nil
+        isEscapeEnabled = true
         onSelectionChanged = nil
         onCancel = nil
     }

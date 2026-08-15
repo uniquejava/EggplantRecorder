@@ -85,7 +85,7 @@ final class StatusItemController: NSObject {
     }
 
     @objc private func statusItemClicked(_ sender: NSStatusBarButton) {
-        guard let appState, appState.phase != .recording else { return }
+        guard let appState, appState.phase != .recording, appState.phase != .countdown else { return }
         let menu = makeIdleMenu()
         statusItem?.menu = menu
         statusItem?.button?.performClick(nil)

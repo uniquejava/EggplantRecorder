@@ -45,6 +45,8 @@ final class CaptureSession: NSObject, SCStreamDelegate, SCStreamOutput {
         microphoneDeviceID: String?,
         excludePID: pid_t,
         showCursor: Bool = true,
+        frameRate: CaptureFrameRate = .fps30,
+        resolution: CaptureResolution = .native,
         areaSourceRect: CGRect? = nil,
         areaPixelWidth: Int? = nil,
         areaPixelHeight: Int? = nil
@@ -83,6 +85,8 @@ final class CaptureSession: NSObject, SCStreamDelegate, SCStreamOutput {
                         microphone: microphone,
                         microphoneDeviceID: microphoneDeviceID,
                         showCursor: showCursor,
+                        frameRate: frameRate,
+                        resolution: resolution,
                         outputPath: outputPath
                     )
                     continuation.resume()
@@ -136,6 +140,8 @@ final class CaptureSession: NSObject, SCStreamDelegate, SCStreamOutput {
         microphone: Bool,
         microphoneDeviceID: String?,
         showCursor: Bool,
+        frameRate: CaptureFrameRate,
+        resolution: CaptureResolution,
         outputPath: String
     ) throws {
         self.outputPath = outputPath
@@ -156,6 +162,14 @@ final class CaptureSession: NSObject, SCStreamDelegate, SCStreamOutput {
         systemAudioInput = nil
         micAudioInput = nil
 
+        let nativeWidth = width
+        let nativeHeight = height
+        let (outWidth, outHeight) = resolution.outputSize(width: width, height: height)
+        let downscaled = outWidth != nativeWidth || outHeight != nativeHeight
+
+        let fps = max(frameRate.rawValue, 1)
+        let bitrate = max(outWidth * outHeight * 6 * fps / 30, 400_000)
+
         let url = URL(fileURLWithPath: outputPath)
         try? FileManager.default.removeItem(at: url)
 
@@ -164,10 +178,10 @@ final class CaptureSession: NSObject, SCStreamDelegate, SCStreamOutput {
 
         let videoSettings: [String: Any] = [
             AVVideoCodecKey: AVVideoCodecType.h264,
-            AVVideoWidthKey: width,
-            AVVideoHeightKey: height,
+            AVVideoWidthKey: outWidth,
+            AVVideoHeightKey: outHeight,
             AVVideoCompressionPropertiesKey: [
-                AVVideoAverageBitRateKey: width * height * 6,
+                AVVideoAverageBitRateKey: bitrate,
                 AVVideoProfileLevelKey: AVVideoProfileLevelH264HighAutoLevel,
             ],
         ]
@@ -177,8 +191,8 @@ final class CaptureSession: NSObject, SCStreamDelegate, SCStreamOutput {
 
         let attrs: [String: Any] = [
             kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,
-            kCVPixelBufferWidthKey as String: width,
-            kCVPixelBufferHeightKey as String: height,
+            kCVPixelBufferWidthKey as String: outWidth,
+            kCVPixelBufferHeightKey as String: outHeight,
         ]
         adaptor = AVAssetWriterInputPixelBufferAdaptor(
             assetWriterInput: videoInput,
@@ -206,13 +220,15 @@ final class CaptureSession: NSObject, SCStreamDelegate, SCStreamOutput {
         }
 
         let config = SCStreamConfiguration()
-        config.width = width
-        config.height = height
+        config.width = outWidth
+        config.height = outHeight
         if let sourceRect, sourceRect.width > 0, sourceRect.height > 0 {
             config.sourceRect = sourceRect
-            config.scalesToFit = false
+            config.scalesToFit = downscaled
+        } else if downscaled {
+            config.scalesToFit = true
         }
-        config.minimumFrameInterval = CMTime(value: 1, timescale: 30)
+        config.minimumFrameInterval = CMTime(value: 1, timescale: CMTimeScale(fps))
         config.queueDepth = 8
         config.pixelFormat = kCVPixelFormatType_32BGRA
         config.showsCursor = showCursor

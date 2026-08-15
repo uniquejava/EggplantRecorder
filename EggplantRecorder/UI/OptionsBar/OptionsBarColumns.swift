@@ -135,7 +135,11 @@ struct OptionsBarMiddleColumn: View {
                     .lineLimit(1)
                     .fixedSize(horizontal: true, vertical: false)
                 Spacer(minLength: 6)
-                OptionsPillLabel(text: model.frameRateLabel, enabled: false)
+                OptionsPillMenu(
+                    text: model.frameRate.label,
+                    items: model.frameRateItems,
+                    onSelect: { model.selectFrameRate($0) }
+                )
             }
 
             OptionsParamRow(icon: "rectangle.ratio.16.to.9") {
@@ -144,7 +148,11 @@ struct OptionsBarMiddleColumn: View {
                     .lineLimit(1)
                     .fixedSize(horizontal: true, vertical: false)
                 Spacer(minLength: 6)
-                OptionsPillLabel(text: model.resolutionLabel, enabled: false)
+                OptionsPillMenu(
+                    text: model.resolution.label,
+                    items: model.resolutionItems,
+                    onSelect: { model.selectResolution($0) }
+                )
             }
 
             OptionsParamRow(icon: "clock") {
@@ -160,11 +168,15 @@ struct OptionsBarMiddleColumn: View {
 
             OptionsParamRow(icon: "timer") {
                 Text("Count Down")
-                    .foregroundStyle(.white.opacity(0.45))
+                    .foregroundStyle(.white.opacity(0.9))
                     .lineLimit(1)
                     .fixedSize(horizontal: true, vertical: false)
                 Spacer(minLength: 6)
-                OptionsPillLabel(text: model.countdownLabel, enabled: false)
+                OptionsPillMenu(
+                    text: model.countdown.label,
+                    items: model.countdownItems,
+                    onSelect: { model.selectCountdown($0) }
+                )
             }
         }
         .frame(maxHeight: .infinity, alignment: .center)

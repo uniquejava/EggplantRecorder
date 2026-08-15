@@ -16,13 +16,20 @@ final class OptionsBarModel: ObservableObject {
     @Published var permissionState: PermissionState = .unknown
     @Published var bannerMessage: String?
 
-    // Placeholders (UI only — not wired into capture yet).
+    // Placeholders (need camera / click / key compositing — not capture-config).
     @Published var pipCamera = false
     @Published var clickZoom = false
     @Published var catchKeyboard = false
-    @Published var frameRateLabel = "30FPS"
-    @Published var resolutionLabel = "Native"
-    @Published var countdownLabel = "none"
+
+    @Published var frameRate: CaptureFrameRate {
+        didSet { persist() }
+    }
+    @Published var resolution: CaptureResolution {
+        didSet { persist() }
+    }
+    @Published var countdown: CaptureCountdown {
+        didSet { persist() }
+    }
 
     enum PermissionState {
         case unknown
@@ -38,36 +45,75 @@ final class OptionsBarModel: ObservableObject {
 
     private weak var appState: AppState?
 
+    private enum DefaultsKey {
+        static let frameRate = "click.yinsb.eggplantrecorder.captureFrameRate"
+        static let resolution = "click.yinsb.eggplantrecorder.captureResolution"
+        static let countdown = "click.yinsb.eggplantrecorder.captureCountdown"
+    }
+
     init(appState: AppState) {
         self.appState = appState
+        let storedFPS = UserDefaults.standard.integer(forKey: DefaultsKey.frameRate)
+        self.frameRate = CaptureFrameRate(rawValue: storedFPS) ?? .fps30
+        let storedRes = UserDefaults.standard.string(forKey: DefaultsKey.resolution) ?? ""
+        self.resolution = CaptureResolution(rawValue: storedRes) ?? .native
+        if UserDefaults.standard.object(forKey: DefaultsKey.countdown) == nil {
+            self.countdown = .none
+        } else {
+            let stored = UserDefaults.standard.integer(forKey: DefaultsKey.countdown)
+            self.countdown = CaptureCountdown(rawValue: stored) ?? .none
+        }
+    }
+
+    var frameRateItems: [OptionsMenuItem] {
+        CaptureFrameRate.allCases.map {
+            OptionsMenuItem(id: String($0.rawValue), title: $0.label, isSelected: $0 == frameRate)
+        }
+    }
+
+    var resolutionItems: [OptionsMenuItem] {
+        availableResolutions.map {
+            OptionsMenuItem(id: $0.rawValue, title: $0.label, isSelected: $0 == resolution)
+        }
+    }
+
+    var countdownItems: [OptionsMenuItem] {
+        CaptureCountdown.allCases.map {
+            OptionsMenuItem(id: String($0.rawValue), title: $0.label, isSelected: $0 == countdown)
+        }
+    }
+
+    var availableResolutions: [CaptureResolution] {
+        CaptureResolution.available(sourceHeight: nativePixelSize.height)
     }
 
     var sizeWidthText: String {
-        if mode == .window, let hit = appState?.pendingWindow?.hit {
-            let scale = screenScale(for: hit.frame)
-            return "\(max(2, Int(hit.frame.width * scale) / 2 * 2))"
-        }
-        if let source = sources.first(where: { $0.id == selectedSourceID }) {
-            return "\(source.width)"
-        }
-        if mode == .area, let area = appState?.pendingArea {
-            return "\(area.pixelWidth)"
-        }
-        return "—"
+        let size = nativePixelSize
+        guard size.width > 0 else { return "—" }
+        return "\(resolution.outputSize(width: size.width, height: size.height).0)"
     }
 
     var sizeHeightText: String {
+        let size = nativePixelSize
+        guard size.height > 0 else { return "—" }
+        return "\(resolution.outputSize(width: size.width, height: size.height).1)"
+    }
+
+    private var nativePixelSize: (width: Int, height: Int) {
         if mode == .window, let hit = appState?.pendingWindow?.hit {
             let scale = screenScale(for: hit.frame)
-            return "\(max(2, Int(hit.frame.height * scale) / 2 * 2))"
+            return (
+                max(2, Int(hit.frame.width * scale) / 2 * 2),
+                max(2, Int(hit.frame.height * scale) / 2 * 2)
+            )
         }
         if let source = sources.first(where: { $0.id == selectedSourceID }) {
-            return "\(source.height)"
+            return (source.width, source.height)
         }
         if mode == .area, let area = appState?.pendingArea {
-            return "\(area.pixelHeight)"
+            return (area.pixelWidth, area.pixelHeight)
         }
-        return "—"
+        return (0, 0)
     }
 
     private func screenScale(for rect: CGRect) -> CGFloat {
@@ -110,6 +156,7 @@ final class OptionsBarModel: ObservableObject {
                 permissionState = CapturePermissions.hasScreenAccess ? .granted : .needsGrant
             }
             bannerMessage = nil
+            clampResolutionIfNeeded()
         } else {
             sources = []
             selectedSourceID = ""
@@ -158,6 +205,7 @@ final class OptionsBarModel: ObservableObject {
                 if !list.contains(where: { $0.id == selectedSourceID }) {
                     selectedSourceID = list.first?.id ?? ""
                 }
+                clampResolutionIfNeeded()
             }
         } catch CaptureSourcesError.emptyAfterGrant {
             permissionState = .needsRelaunch
@@ -193,6 +241,7 @@ final class OptionsBarModel: ObservableObject {
         )
         sources = [source]
         selectedSourceID = source.id
+        clampResolutionIfNeeded()
         await probeScreenPermission(listing: .screen)
     }
 
@@ -222,6 +271,7 @@ final class OptionsBarModel: ObservableObject {
         )
         sources = [source]
         selectedSourceID = source.id
+        clampResolutionIfNeeded()
         await probeScreenPermission(listing: .window)
     }
 
@@ -282,6 +332,7 @@ final class OptionsBarModel: ObservableObject {
 
     private func fireRecord(source: CaptureSource) {
         let area = appState?.pendingArea
+        clampResolutionIfNeeded()
         let config = RecordingConfig(
             kind: mode,
             sourceID: source.id,
@@ -289,10 +340,41 @@ final class OptionsBarModel: ObservableObject {
             microphone: microphone,
             microphoneDeviceID: microphone ? selectedMicID : nil,
             showCursor: showCursor,
+            frameRate: frameRate,
+            resolution: resolution,
+            countdown: countdown,
             areaSourceRect: mode == .area ? area?.sourceRect : nil,
             areaPixelWidth: mode == .area ? area?.pixelWidth : nil,
             areaPixelHeight: mode == .area ? area?.pixelHeight : nil
         )
         onRecord?(config)
+    }
+
+    func selectFrameRate(_ id: String) {
+        guard let value = Int(id), let pick = CaptureFrameRate(rawValue: value) else { return }
+        frameRate = pick
+    }
+
+    func selectResolution(_ id: String) {
+        guard let pick = CaptureResolution(rawValue: id) else { return }
+        resolution = pick
+        clampResolutionIfNeeded()
+    }
+
+    func selectCountdown(_ id: String) {
+        guard let value = Int(id), let pick = CaptureCountdown(rawValue: value) else { return }
+        countdown = pick
+    }
+
+    private func clampResolutionIfNeeded() {
+        if !availableResolutions.contains(resolution) {
+            resolution = .native
+        }
+    }
+
+    private func persist() {
+        UserDefaults.standard.set(frameRate.rawValue, forKey: DefaultsKey.frameRate)
+        UserDefaults.standard.set(resolution.rawValue, forKey: DefaultsKey.resolution)
+        UserDefaults.standard.set(countdown.rawValue, forKey: DefaultsKey.countdown)
     }
 }
