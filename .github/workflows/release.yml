@@ -1,0 +1,76 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to build, for example v0.1.0'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build and publish macOS app
+    runs-on: macos-latest
+    env:
+      RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
+
+      - name: Select Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Build archive
+        env:
+          ARCHIVE_PATH: ${{ runner.temp }}/EggplantRecorder.xcarchive
+        run: |
+          set -euo pipefail
+          xcodebuild archive \
+            -project EggplantRecorder.xcodeproj \
+            -scheme EggplantRecorder \
+            -configuration Release \
+            -destination 'generic/platform=macOS' \
+            -archivePath "$ARCHIVE_PATH" \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY="-" \
+            CODE_SIGNING_ALLOWED=YES \
+            DEVELOPMENT_TEAM="" \
+            PROVISIONING_PROFILE_SPECIFIER="" \
+            SKIP_INSTALL=NO
+
+      - name: Package DMG
+        env:
+          ARCHIVE_PATH: ${{ runner.temp }}/EggplantRecorder.xcarchive
+          EXPORT_PATH: ${{ runner.temp }}/EggplantRecorder-release
+          DMG_PATH: ${{ runner.temp }}/EggplantRecorder-release/EggplantRecorder-${{ env.RELEASE_TAG }}.dmg
+        run: |
+          set -euo pipefail
+          APP_PATH="$ARCHIVE_PATH/Products/Applications/EggplantRecorder.app"
+          STAGE="$EXPORT_PATH/dmg-stage"
+
+          test -d "$APP_PATH"
+          mkdir -p "$STAGE"
+          cp -R "$APP_PATH" "$STAGE/"
+          ln -s /Applications "$STAGE/Applications"
+          hdiutil create -volname EggplantRecorder -srcfolder "$STAGE" -ov -format UDZO "$DMG_PATH"
+          rm -rf "$STAGE"
+          ls -lh "$DMG_PATH"
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: EggplantRecorder ${{ env.RELEASE_TAG }}
+          files: ${{ runner.temp }}/EggplantRecorder-release/EggplantRecorder-${{ env.RELEASE_TAG }}.dmg
+          generate_release_notes: true
