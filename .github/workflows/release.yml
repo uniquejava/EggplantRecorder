@@ -67,10 +67,26 @@ jobs:
           rm -rf "$STAGE"
           ls -lh "$DMG_PATH"
 
+      - name: Prepare release notes
+        env:
+          NOTES_SRC: docs/releases/${{ env.RELEASE_TAG }}.md
+        run: |
+          set -euo pipefail
+          if [[ -f "$NOTES_SRC" ]]; then
+            cp "$NOTES_SRC" "${{ runner.temp }}/release-notes.md"
+          else
+            {
+              echo "## EggplantRecorder ${{ env.RELEASE_TAG }}"
+              echo
+              echo "See commit history for changes."
+            } > "${{ runner.temp }}/release-notes.md"
+          fi
+
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.RELEASE_TAG }}
           name: EggplantRecorder ${{ env.RELEASE_TAG }}
+          body_path: ${{ runner.temp }}/release-notes.md
           files: ${{ runner.temp }}/EggplantRecorder-release/EggplantRecorder-${{ env.RELEASE_TAG }}.dmg
-          generate_release_notes: true
+          generate_release_notes: false
