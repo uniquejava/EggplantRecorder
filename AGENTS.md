@@ -6,7 +6,7 @@ macOS **15+** menu-bar screen recorder (OMI-like). **SwiftUI + AppKit**.
 
 Product requirements: [`docs/product.md`](docs/product.md).
 
-**Status (2026-08-15):** MVP + Area + Window hover-pick + solid options bar (FPS / Resolution / Countdown) + in-app Edit/trim/export on `main`.
+**Status (2026-08-15):** MVP + Area + Window hover-pick + solid options bar (FPS / Resolution / Countdown) + in-app Edit/trim/export on `main`. In-recording chrome (dashed frame + mini bar) now covers **Area and Window**. Known-issue backlog: [`docs/code-audit.md`](docs/code-audit.md).
 
 ## Identity
 
@@ -32,9 +32,15 @@ Product requirements: [`docs/product.md`](docs/product.md).
 
 ### Suggested next work
 
+Audit backlog with verified `file:line` detail: [`docs/code-audit.md`](docs/code-audit.md) — start there.
+
 | Priority | Item | Notes |
 |----------|------|--------|
+| **High** | Double-tap Stop / Record crash | `phase` / `isRecording` / `writing` all flip *after* the `await`, so a second tap re-enters and double-finishes the `AVAssetWriter` — audit #1 |
+| Medium | Test target (none exists) | `CaptureTiming` PTS math, `ExportSettings`, `RecordingsLibrary` path guards are pure + untested — audit #2 |
+| Medium | Serial duration probe in `RecordingsLibrary.list()` | Stalls Files List linearly with library size — audit #3 |
 | Medium | OMI Convert/Compress | Menu present, disabled (`FilesListView`) — implement later |
+| Low | Smaller audit cleanups | Dup UserDefaults key, filename-inferred kind, overlay boilerplate, dead `anchorRect`, force unwrap, sandbox bookmark — audit #4-9 |
 | Low | Remaining options placeholders | PiP / Click Zoom / Keyboard / Timing Recording |
 | Low | Dock / app icon polish | Done — `AppIcon.appiconset` + `scripts/generate_app_icons.py` (see `docs/app-icon.md`) |
 
@@ -43,11 +49,11 @@ Product requirements: [`docs/product.md`](docs/product.md).
 - **Idle tray:** custom `NSStatusItem` + `RecorderGlyph`.
 - **Menu:** Record Screen / Area / Window / Window Area / Show Files List / Preferences… / Quit.
 - **Area:** dim overlay + pale-blue dashed border + handles → OMI options bar (selection stays) → Record → **in-recording** dashed frame + mini control bar below selection → `Area-….mp4`. Last area rect remembered (UserDefaults).
-- **Window:** hover → blue dashed highlight → click → Options (no window dropdown). Esc cancels.
+- **Window:** hover → blue dashed highlight → click → Options (no window dropdown). Esc cancels. In-recording: dashed frame + mini control bar that **follow the window** as it moves / resizes.
 - **Window Area:** same hover-pick as Window, then continues as Area with the window frame as the preset selection (editable; capture is `sourceRect`, not `window:ID`).
 - **Options bar:** bottom-center `NSPanel` (**16pt** above screen bottom), ~**224 / 224 / 76** × ~**186**, solid dark (no glass), draggable. Working: display picker (Screen), Mic, System Sound, cursor, **FPS / Resolution / Countdown**. PiP / Click Zoom / Keyboard / Timing Recording still placeholders. Grant / Relaunch copy when needed.
 - **Capture:** screen/window/area, exclude self PID, dual audio tracks, pause compresses timeline.
-- **Recording controls:** menu-bar Pause / Stop / `HH:MM:SS`; Area also gets compact solid mini bar (Restart / Discard; Annotate stub).
+- **Recording controls:** menu-bar Pause / Stop / `HH:MM:SS`; Area **and Window** also get the compact solid mini bar (Restart / Discard; Annotate stub).
 - **Stop →** library MP4 → Files List (820pt), Quick Look + Play + Edit, OMI context menu.
 - **Edit:** Files List right-click / Operation → preview + trim handles + Export → `Name-Edit.mp4` (dual audio preserved).
 - **Preferences…** (⌘,): General (save folder, recording timer, after-record/edit actions, Dock hide, capture + export defaults) + About (Fred/Shot-style).
@@ -76,7 +82,8 @@ EggplantRecorder/
     Shared/                         # SelectionChrome, NSScreen+DisplayID, VisualEffectBackground
     StatusItem/                     # tray + RecordingControlBarView
     OptionsBar/                     # Controller, Model, View, Columns, Controls
-    AreaSelection/                  # pick overlay + in-recording chrome (border / mini bar)
+    AreaSelection/                  # pick overlay + selection canvas
+    RecordingChrome/                # in-recording chrome (dashed frame / mini bar) — Area + Window
     WindowSelection/                # hover-pick controller + overlay
     Countdown/                      # pre-record number overlay
     FilesList/                      # window + table + cells
@@ -106,7 +113,7 @@ Xcode project uses **PBXFileSystemSynchronizedRootGroup** — new files under `E
 10. **Options checkbox:** unchecked must stay hittable (`.contentShape` / non-clear fill).
 11. **Options chrome:** solid fill (no outer SwiftUI padding / no glass halo). Open at `screen.frame.minY + 16`, bottom-centered.
 12. **Window pick:** hover+click only; snapshot hit-tester before overlays; exclude own PID.
-13. **Area recording chrome:** border window must `ignoresMouseEvents`; mini panel is a separate higher-level panel so clicks reach Pause/Stop. Both excluded from capture via `excludePID`.
+13. **Recording chrome (Area + Window):** border window must `ignoresMouseEvents`; mini panel is a separate higher-level panel so clicks reach Pause/Stop. Area excludes both via `excludePID`; Window capture is `desktopIndependentWindow`, so chrome can't leak into the MP4. Window chrome re-reads `WindowHitTester.liveFrame(of:)` each tick to follow the window — nil means gone/minimized, so drop the frame but keep the controls.
 
 ## Stack
 
