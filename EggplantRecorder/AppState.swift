@@ -6,7 +6,18 @@ enum AppPhase {
     case idle
     case configuring
     case countdown
+    /// Start requested, capture not live yet. Set *synchronously* before the first `await`
+    /// so a second Record tap can't build a second stream + writer (audit #1).
+    case starting
     case recording
+    /// Stop / Cancel / Restart requested, writer still finalizing. Same reason: a second
+    /// Stop tap during the await used to double-finish the `AVAssetWriter` and crash.
+    case stopping
+
+    /// An async start/stop is in flight — every recording control must be inert.
+    var isTransitioning: Bool {
+        self == .starting || self == .stopping
+    }
 }
 
 @MainActor
@@ -65,8 +76,15 @@ final class AppState: ObservableObject {
         Task { await refreshRecordings() }
     }
 
+    /// Selection / options / Record may only be entered from a settled, non-capturing phase.
+    /// Deliberately excludes `.countdown`, `.starting` and `.stopping` so nothing re-enters
+    /// the capture path while an await is outstanding.
+    var canBeginSetup: Bool {
+        phase == .idle || phase == .configuring
+    }
+
     func showOptions(mode: RecordingKind, anchorRect: CGRect? = nil) {
-        guard phase != .recording, phase != .countdown else { return }
+        guard canBeginSetup else { return }
         // Area keeps its dim overlay while the options panel is up (OMI-like).
         if mode != .area {
             areaSelection.hide()
@@ -79,7 +97,7 @@ final class AppState: ObservableObject {
     }
 
     func showAreaSelection(preset: (displayID: CGDirectDisplayID, sourceRect: CGRect)? = nil) {
-        guard phase != .recording, phase != .countdown else { return }
+        guard canBeginSetup else { return }
         optionsBar.hide()
         windowSelection.hide()
         pendingArea = nil
@@ -105,7 +123,7 @@ final class AppState: ObservableObject {
     }
 
     func showWindowSelection() {
-        guard phase != .recording, phase != .countdown else { return }
+        guard canBeginSetup else { return }
         optionsBar.hide()
         areaSelection.hide()
         pendingArea = nil
@@ -127,7 +145,7 @@ final class AppState: ObservableObject {
 
     /// Hover-pick a window, then continue as Area with that window’s frame as the selection.
     func showWindowAreaSelection() {
-        guard phase != .recording, phase != .countdown else { return }
+        guard canBeginSetup else { return }
         optionsBar.hide()
         areaSelection.hide()
         pendingArea = nil
@@ -165,11 +183,16 @@ final class AppState: ObservableObject {
     }
 
     func startRecording(config: RecordingConfig, skipCountdown: Bool = false) async {
+        guard canBeginSetup else { return }
         lastErrorMessage = nil
         if !skipCountdown, config.countdown != .none {
             let proceeded = await runCountdown(for: config)
             guard proceeded else { return }
         }
+        // Synchronous, before any await below: the guard above now rejects a second tap
+        // instead of letting it build a second SCStream + writer on the same path.
+        phase = .starting
+        optionsBar.setBusy(true)
         do {
             try RecordingsLibrary.ensureDirectory()
             let output = RecordingsLibrary.makeOutputURL(kind: config.kind)
@@ -208,6 +231,7 @@ final class AppState: ObservableObject {
         } catch {
             lastErrorMessage = error.localizedDescription
             phase = .configuring
+            optionsBar.setBusy(false)
             areaSelection.setSelectionLocked(false)
             optionsBar.showError(error.localizedDescription)
         }
@@ -294,8 +318,7 @@ final class AppState: ObservableObject {
 
     func stopRecording() async {
         guard phase == .recording else { return }
-        stopElapsedTimer()
-        recordingChrome.hide()
+        beginStopping()
         do {
             let path = try await recorder.stop()
             returnToIdle()
@@ -314,8 +337,7 @@ final class AppState: ObservableObject {
     /// Discard the in-progress recording (delete file, no Files List).
     func cancelRecording() async {
         guard phase == .recording else { return }
-        stopElapsedTimer()
-        recordingChrome.hide()
+        beginStopping()
         do {
             let path = try await recorder.stop()
             try? FileManager.default.removeItem(atPath: path)
@@ -328,8 +350,7 @@ final class AppState: ObservableObject {
     /// Discard current take and start again with the same settings / area or window.
     func restartRecording() async {
         guard phase == .recording, let config = activeRecordingConfig else { return }
-        stopElapsedTimer()
-        recordingChrome.hide()
+        beginStopping()
         do {
             let path = try await recorder.stop()
             try? FileManager.default.removeItem(atPath: path)
@@ -341,6 +362,16 @@ final class AppState: ObservableObject {
         // Keep the active target — startRecording reuses it for the next take's chrome.
         returnToIdle(keepActiveTarget: true)
         await startRecording(config: config, skipCountdown: true)
+    }
+
+    /// Shared front half of every take-ending path. Leaves `.recording` **synchronously**
+    /// so the `phase == .recording` guards reject a second Stop / Cancel / Restart tap
+    /// while `recorder.stop()` is still awaiting, and takes the controls away meanwhile.
+    private func beginStopping() {
+        phase = .stopping
+        stopElapsedTimer()
+        recordingChrome.hide()
+        statusItem.refreshRecordingControls()
     }
 
     /// Shared teardown after a take ends.
@@ -383,7 +414,7 @@ final class AppState: ObservableObject {
         if phase == .countdown {
             countdown.cancel()
         }
-        if phase == .recording {
+        if phase == .recording || phase.isTransitioning {
             Task {
                 recordingChrome.hide()
                 _ = try? await recorder.stop()

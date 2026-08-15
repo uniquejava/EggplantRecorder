@@ -77,7 +77,7 @@ struct OptionsBarView: View {
     }
 
     private var canRecord: Bool {
-        model.permissionState == .granted && !model.selectedSourceID.isEmpty
+        model.permissionState == .granted && !model.selectedSourceID.isEmpty && !model.isBusy
     }
 
     private var permissionBanner: String? {

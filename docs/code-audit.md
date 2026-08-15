@@ -10,30 +10,67 @@ Fix items top-down. Tick them off here as they land so the next session doesn't 
 
 ## 1. Double-tap Stop / Record can crash or orphan a capture — HIGH
 
-**Status:** open. Only item here that can lose a user's recording.
+**Status: fixed 2026-08-15.** Two layers, callers first:
 
-`AppState.stopRecording()` guards `phase == .recording`; `RecorderController.stop()`
-(`Recording/RecorderController.swift:46`) guards `isRecording`. Both flags flip **after**
-`await recorder.stop()` resolves, and no button disables itself meanwhile
-(`UI/RecordingChrome/RecordingMiniPanel.swift` `onStop`, `UI/StatusItem/RecordingControlBarView.swift`),
-so a second tap during the await window re-enters through the same guard.
+*Phase gate (`AppState`).* `AppPhase` gained `.starting` and `.stopping`, both set **synchronously
+before** the first `await` — `.starting` at the top of the `do` in `startRecording`, `.stopping` in the
+new shared `beginStopping()` that fronts `stopRecording` / `cancelRecording` / `restartRecording`. The
+existing `phase == .recording` guards now reject the second tap on their own. Entry into setup went
+from `phase != .recording, phase != .countdown` to a single `canBeginSetup` (`.idle` / `.configuring`
+only), which also blocks a second Record tap *during a countdown* — that used to run two countdowns.
 
-`CaptureSession.stopAndFinish()` (`Recording/CaptureSession.swift:269`) has no re-entry guard and
-never nils `writer`, so the second pass calls `markAsFinished()` and `finishWriting` on an
-already-completed `AVAssetWriter`. That raises an ObjC exception, which Swift `try/catch` cannot
-intercept → hard crash.
+*Controls.* Menu-bar Pause / Stop disable themselves while `phase.isTransitioning`
+(`RecordingControlBarView.reload()`); the mini panel was already torn down synchronously by
+`recordingChrome.hide()`. The options-bar Record button is gated by a new `OptionsBarModel.isBusy`,
+set before the mic-permission `await` so the pre-`onRecord` window is covered too, and cleared in
+`prepare(mode:)`.
 
-Same shape on start: `CaptureSession.start()` checks `if writing` at line 54, but `writing` isn't
-set `true` until `beginWriting()` runs (line 266), and there are `await` points in between
-(`SCShareableContent.excludingDesktopWindows`, mic permission). A double Record tap can build two
-`SCStream`s + `AVAssetWriter`s against the same output path and orphan the first (never stopped).
+*Recorder layers.* `RecorderController` has an `isBusy` flag around both start and stop; its `start`
+now **throws** `alreadyRecording` instead of returning silently (a silent return let the caller flip
+its own state to "recording" with nothing captured). `CaptureSession.start()` has a `starting` flag
+covering the gap before `writing` is set, and `stopAndFinish()` is idempotent: a `finished` flag, and
+writer + inputs are handed to locals and the fields nil'd so nothing can be finished twice.
 
-**Fix:** add transitional `.starting` / `.stopping` cases to `AppPhase`, set synchronously *before*
-the first `await`; guard every entry point (`startRecording`, `stopRecording`, `cancelRecording`,
-`restartRecording`) on them; disable Record / Stop / Restart / Cancel for the duration. Make
-`stopAndFinish()` idempotent as a belt-and-braces second layer.
+Two adjacent crashes fell out of the same pass:
+
+- `stopAndFinish()` on a session whose first frame never arrived (Stop within milliseconds, or a
+  minimized window with no frames) called `markAsFinished()` before `startWriting()` — the same
+  uncatchable ObjC exception. It now throws `finalizeFailed` instead.
+- `RecorderController.stop()` left `isRecording` true when finalizing threw, so every later start was
+  rejected as "already recording" until relaunch. Cleared in a `defer` now.
+
+**Verified by reproduction, 2026-08-15.** Crash confirmed on the pre-fix build and gone after.
+
+Harness: `cliclick` for navigation, `screencapture` to locate panels, an AX probe for status-item
+geometry (`AXExtrasMenuBar` → pos/size = exact click points; the embedded Pause/Stop buttons are *not*
+AX-exposed, so `AXPress` is unavailable), and a small `CGEvent` tool for the double-tap. **`cliclick`
+cannot express this race** — it posts clicks without setting `mouseEventClickState`, so AppKit sees
+`clickCount=0` and silently drops the second click. The double-tap must be posted as two well-formed
+click pairs (`mouseEventClickState = 1`) — that was the difference between "no repro" and repro.
+
+- **Pre-fix (`9c109b3`), Screen recording, two Stop clicks 40 ms apart:** hard crash.
+  ```
+  NSInternalInconsistencyException: *** -[AVAssetWriter finishWritingWithCompletionHandler:]
+  Cannot call method when status is 2        (status 2 = AVAssetWriterStatusCompleted)
+      at CaptureSession.stopAndFinish
+  ```
+  Exactly the predicted mechanism — the second pass finishing an already-completed writer.
+- **Fixed build, identical injection:** survives. One Stop action, `recorder.stop()` 53 ms, status item
+  back to the 40 pt idle glyph, valid MP4. Also clean at a 5 ms gap.
+- **The window is ~40–55 ms** (measured: `recorder.stop()` took 37/41/45/45/53 ms across runs on short
+  recordings). It is `stopCapture` round-trip + `finishWriting`, so it grows with recording length —
+  a long take widens the window and makes an ordinary impatient double-tap far more likely to land.
+
+Which layer saved it, precisely: the **disabled Stop button** (`phase.isTransitioning` in
+`RecordingControlBarView.reload()`) — the second click hits a disabled control, so no action fires. The
+phase guard is the backstop for paths where the control isn't disabled or destroyed, and was not the
+layer exercised in this test. The mini panel is self-protecting for a different reason:
+`beginStopping()` calls `recordingChrome.hide()` synchronously, so its Stop button is gone within the
+window (verified — a mini-panel double-tap produced one action in both builds).
 
 ## 2. No test target exists
+
+**Status:** open — and now the top item. The audit #1 fix is a state machine that nothing exercises.
 
 `grep productType EggplantRecorder.xcodeproj/project.pbxproj` → one `application` target, nothing else.
 

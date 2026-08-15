@@ -13,6 +13,9 @@ final class OptionsBarModel: ObservableObject {
     @Published var microphone = true
     @Published var showCursor = true
     @Published var isLoading = false
+    /// Record was tapped and a start is in flight (mic prompt / stream setup). Keeps the
+    /// button inert so a second tap can't fire a second `onRecord` (audit #1).
+    @Published var isBusy = false
     @Published var permissionState: PermissionState = .unknown
     @Published var bannerMessage: String?
 
@@ -124,6 +127,7 @@ final class OptionsBarModel: ObservableObject {
     func prepare(mode: RecordingKind) {
         self.mode = mode
         bannerMessage = nil
+        isBusy = false
         syncCaptureDefaultsFromPreferences()
         Task { await reload() }
     }
@@ -305,16 +309,19 @@ final class OptionsBarModel: ObservableObject {
     }
 
     func startRecording() {
+        guard !isBusy else { return }
         guard let source = sources.first(where: { $0.id == selectedSourceID }) else {
             bannerMessage = permissionState == .needsGrant
                 ? "Grant Screen Recording access first."
                 : "Pick a capture source."
             return
         }
+        isBusy = true
         if microphone {
             Task {
                 let ok = await CapturePermissions.requestMicrophoneAccess()
                 if !ok {
+                    isBusy = false
                     bannerMessage = "Microphone permission is required. Enable it in System Settings."
                     CapturePermissions.openMicrophoneSettings()
                     return

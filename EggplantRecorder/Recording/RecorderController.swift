@@ -4,11 +4,20 @@ import Foundation
 final class RecorderController: ObservableObject {
     @Published private(set) var isRecording = false
     @Published private(set) var isPaused = false
+    /// True from the moment a start/stop is requested until it resolves. `isRecording`
+    /// alone can't gate re-entry: it only flips *after* the await (audit #1).
+    @Published private(set) var isBusy = false
 
     private let session = CaptureSession()
 
     func start(config: RecordingConfig, outputURL: URL) async throws {
-        guard !isRecording else { return }
+        guard !isRecording, !isBusy else {
+            // Throw rather than return: a silent return let the caller flip its own state to
+            // "recording" while nothing was captured.
+            throw CaptureError.alreadyRecording
+        }
+        isBusy = true
+        defer { isBusy = false }
         let excludePID = ProcessInfo.processInfo.processIdentifier
         try await session.start(
             sourceID: config.sourceID,
@@ -43,12 +52,17 @@ final class RecorderController: ObservableObject {
 
     @discardableResult
     func stop() async throws -> String {
-        guard isRecording else {
+        guard isRecording, !isBusy else {
             throw CaptureError.finalizeFailed
         }
-        let path = try await session.stop()
-        isRecording = false
-        isPaused = false
-        return path
+        isBusy = true
+        // The take is over either way: if finalizing throws, `isRecording` must still clear
+        // or every later start is rejected as "already recording" until relaunch.
+        defer {
+            isRecording = false
+            isPaused = false
+            isBusy = false
+        }
+        return try await session.stop()
     }
 }

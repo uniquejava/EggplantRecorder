@@ -6,7 +6,7 @@ macOS **15+** menu-bar screen recorder (OMI-like). **SwiftUI + AppKit**.
 
 Product requirements: [`docs/product.md`](docs/product.md).
 
-**Status (2026-08-15):** MVP + Area + Window hover-pick + solid options bar (FPS / Resolution / Countdown) + in-app Edit/trim/export on `main`. In-recording chrome (dashed frame + mini bar) now covers **Area and Window**. Known-issue backlog: [`docs/code-audit.md`](docs/code-audit.md).
+**Status (2026-08-15):** MVP + Area + Window hover-pick + solid options bar (FPS / Resolution / Countdown) + in-app Edit/trim/export on `main`. In-recording chrome (dashed frame + mini bar) now covers **Area and Window**. Double-tap Stop/Record re-entry crash fixed (`AppPhase.starting` / `.stopping`) — **reproduced on the pre-fix build and verified gone**. Remaining known issues: [`docs/code-audit.md`](docs/code-audit.md).
 
 ## Identity
 
@@ -36,8 +36,7 @@ Audit backlog with verified `file:line` detail: [`docs/code-audit.md`](docs/code
 
 | Priority | Item | Notes |
 |----------|------|--------|
-| **High** | Double-tap Stop / Record crash | `phase` / `isRecording` / `writing` all flip *after* the `await`, so a second tap re-enters and double-finishes the `AVAssetWriter` — audit #1 |
-| Medium | Test target (none exists) | `CaptureTiming` PTS math, `ExportSettings`, `RecordingsLibrary` path guards are pure + untested — audit #2 |
+| **High** | Test target (none exists) | `CaptureTiming` PTS math, `ExportSettings`, `RecordingsLibrary` path guards are pure + untested — and the new `AppPhase` start/stop gate has no coverage — audit #2 |
 | Medium | Serial duration probe in `RecordingsLibrary.list()` | Stalls Files List linearly with library size — audit #3 |
 | Medium | OMI Convert/Compress | Menu present, disabled (`FilesListView`) — implement later |
 | Low | Smaller audit cleanups | Dup UserDefaults key, filename-inferred kind, overlay boilerplate, dead `anchorRect`, force unwrap, sandbox bookmark — audit #4-9 |
@@ -114,6 +113,7 @@ Xcode project uses **PBXFileSystemSynchronizedRootGroup** — new files under `E
 11. **Options chrome:** solid fill (no outer SwiftUI padding / no glass halo). Open at `screen.frame.minY + 16`, bottom-centered.
 12. **Window pick:** hover+click only; snapshot hit-tester before overlays; exclude own PID.
 13. **Recording chrome (Area + Window):** border window must `ignoresMouseEvents`; mini panel is a separate higher-level panel so clicks reach Pause/Stop. Area excludes both via `excludePID`; Window capture is `desktopIndependentWindow`, so chrome can't leak into the MP4. Window chrome re-reads `WindowHitTester.liveFrame(of:)` each tick to follow the window — nil means gone/minimized, so drop the frame but keep the controls.
+14. **Never re-enter start/stop:** `AVAssetWriter` finished twice raises an ObjC exception Swift cannot catch — a hard crash, and the recording is lost. `AppPhase.starting` / `.stopping` are set **synchronously before** the first `await` for exactly this reason (`beginStopping()`; `canBeginSetup` for entry). Any new capture entry point must set them before awaiting and gate on them, and any new control must go inert while `phase.isTransitioning`. `CaptureSession.stopAndFinish()` is idempotent as a second layer — keep it that way. Also never `markAsFinished()` a writer whose session never started (Stop before the first frame): same uncatchable exception.
 
 ## Stack
 
@@ -147,6 +147,18 @@ Do **not** open a different DerivedData path, and do **not** skip `-derivedDataP
 `build/` is gitignored. Do **not** launch `/Applications/EggplantRecorder.app` (often stale — still has old `icons.icns`).
 
 Stable path for docs / manual open: `build/Build/Products/Debug/EggplantRecorder.app` (also mirrored historically as `build/EggplantRecorder.app` when agents ditto’d; prefer the Products path above).
+
+### Driving the UI from an agent (works — used to repro audit #1)
+
+Needs Accessibility granted to the terminal app (iTerm) once. Then:
+
+- **Find the tray icon:** don't pixel-hunt, ask AX. `AXUIElementCreateApplication(pid)` → `AXExtrasMenuBar` → `AXPosition`/`AXSize`. Idle is 40×24; during recording the status item becomes the control bar at 116×24, so **width > 100 is a reliable "is recording" probe**. The position moves whenever the user quits other menu-bar apps — re-probe every run, never hardcode.
+- **Menu items:** open with `cliclick c:<left+20>,12`, then Record Screen / Area / Window Area / Window / Files List at y ≈ 41 / 63 / 85 / 118 / 151.
+- **Options bar:** bottom-center, so the red Record button sits at ≈ `(midX + 224, screenH - 109)` — (1248, 1043) on a 2048×1152 display.
+- **Panels:** `screencapture -x -R x,y,w,h` then read the PNG; region is in points, image is 2× on Retina.
+- **`cliclick` cannot test double-tap races.** It posts clicks without `mouseEventClickState`, so AppKit sees `clickCount=0` and drops the second click — you get one button action no matter how small the gap, and a broken race looks fixed. Post two well-formed pairs via `CGEvent` with `mouseEventClickState = 1` instead.
+- Embedded Pause/Stop buttons are **not** AX-exposed; `AXPress` is unavailable, mouse events only.
+- `print()` from the app is block-buffered when redirected — use `NSLog` and launch the binary directly (`…app/Contents/MacOS/EggplantRecorder > log 2>&1 &`) to capture output.
 
 ## One-liner for the next agent
 

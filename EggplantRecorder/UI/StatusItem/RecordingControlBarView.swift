@@ -63,6 +63,14 @@ final class RecordingControlBarView: NSView {
 
     func reload() {
         guard let appState else { return }
+        // Stop/Pause go inert while a stop is finalizing — the tap that used to land here
+        // during `recorder.stop()`'s await double-finished the writer (audit #1).
+        let transitioning = appState.phase.isTransitioning
+        pauseButton.isEnabled = !transitioning
+        stopButton.isEnabled = !transitioning
+        pauseButton.alphaValue = transitioning ? 0.4 : 1
+        stopButton.alphaValue = transitioning ? 0.4 : 1
+
         let paused = appState.isPaused
         let pauseSymbol = paused ? "play.fill" : "pause.fill"
         pauseButton.image = NSImage(

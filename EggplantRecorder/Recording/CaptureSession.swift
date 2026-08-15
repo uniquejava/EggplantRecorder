@@ -21,6 +21,12 @@ final class CaptureSession: NSObject, SCStreamDelegate, SCStreamOutput {
     private var hasHostPTS = false
     private var pauseBeganValid = false
     private var resumePending = false
+    /// Set on the caller's actor before the first `await` in `start()`; `writing` only
+    /// becomes true at the very end of `beginWriting()`, so it can't gate re-entry.
+    private var starting = false
+    /// `stopAndFinish()` ran once. Finishing an `AVAssetWriter` twice raises an ObjC
+    /// exception that Swift `try/catch` cannot intercept — a hard crash.
+    private var finished = false
 
     private var sessionAnchor = CMTime.invalid
     private var pausedAccumulated = CMTime.zero
@@ -51,9 +57,11 @@ final class CaptureSession: NSObject, SCStreamDelegate, SCStreamOutput {
         areaPixelWidth: Int? = nil,
         areaPixelHeight: Int? = nil
     ) async throws {
-        if writing {
+        if writing || starting {
             throw CaptureError.alreadyRecording
         }
+        starting = true
+        defer { starting = false }
 
         if microphone {
             let granted = await CapturePermissions.requestMicrophoneAccess()
@@ -148,6 +156,7 @@ final class CaptureSession: NSObject, SCStreamDelegate, SCStreamOutput {
         writing = false
         paused = false
         sessionStarted = false
+        finished = false
         hasHostPTS = false
         pauseBeganValid = false
         resumePending = false
@@ -266,8 +275,17 @@ final class CaptureSession: NSObject, SCStreamDelegate, SCStreamOutput {
         writing = true
     }
 
+    /// Idempotent on purpose. Callers are gated (`AppPhase.stopping`), but a second pass
+    /// here would call `markAsFinished()` / `finishWriting` on an already-completed writer,
+    /// and that ObjC exception is not catchable in Swift.
     private func stopAndFinish() throws -> String {
+        guard !finished else {
+            if let lastError { throw lastError }
+            return outputPath
+        }
+        finished = true
         writing = false
+
         let stream = self.stream
         self.stream = nil
 
@@ -282,18 +300,43 @@ final class CaptureSession: NSObject, SCStreamDelegate, SCStreamOutput {
             sem.wait()
         }
 
+        // Hand ownership to locals and clear the fields, so nothing can be finished twice
+        // even if a future caller slips past the guards above.
+        let writer = self.writer
+        let videoInput = self.videoInput
+        let systemAudioInput = self.systemAudioInput
+        let micAudioInput = self.micAudioInput
+        self.writer = nil
+        self.videoInput = nil
+        self.systemAudioInput = nil
+        self.micAudioInput = nil
+        adaptor = nil
+
+        guard let writer else {
+            let err = lastError ?? CaptureError.finalizeFailed
+            lastError = err
+            throw err
+        }
+        // Stop before the first frame arrived: `startWriting()` never ran, and
+        // `markAsFinished()` on a writer that hasn't started raises the same exception.
+        guard sessionStarted, writer.status == .writing else {
+            let err = writer.error ?? lastError ?? CaptureError.finalizeFailed
+            lastError = err
+            throw err
+        }
+
         videoInput?.markAsFinished()
         systemAudioInput?.markAsFinished()
         micAudioInput?.markAsFinished()
 
         let done = DispatchSemaphore(value: 0)
-        writer?.finishWriting {
+        writer.finishWriting {
             done.signal()
         }
         done.wait()
 
-        if writer?.status == .failed {
-            let err = writer?.error ?? CaptureError.finalizeFailed
+        if writer.status == .failed {
+            let err = writer.error ?? CaptureError.finalizeFailed
             lastError = err
             throw err
         }

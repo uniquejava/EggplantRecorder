@@ -48,6 +48,11 @@ final class OptionsBarController {
         })
     }
 
+    /// Keep the Record button inert while a start is in flight (audit #1).
+    func setBusy(_ busy: Bool) {
+        model?.isBusy = busy
+    }
+
     func showError(_ message: String) {
         model?.bannerMessage = message
         if panel?.isVisible == true {
