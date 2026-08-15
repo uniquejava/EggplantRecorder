@@ -1,8 +1,8 @@
 import AppKit
 
-/// Compact timer + circular controls during Area recording.
+/// Compact timer + circular controls shown during Area / Window recording.
 /// Cancel arms a confirm chip, then discards on second click.
-final class AreaRecordingMiniBarView: NSView {
+final class RecordingMiniBarView: NSView {
     var onPause: (() -> Void)?
     var onStop: (() -> Void)?
     var onRestart: (() -> Void)?

@@ -71,6 +71,20 @@ struct WindowHitTester {
         hits.first { $0.frame.contains(point) }
     }
 
+    /// Current frame of one window in Cocoa global points, or nil when it is gone / off-screen
+    /// (closed, minimized, another Space). Used to keep recording chrome glued to the window.
+    /// `kCGWindowIsOnscreen` is *absent* — not `false` — for off-screen windows, so require it.
+    static func liveFrame(of windowID: CGWindowID) -> CGRect? {
+        guard let infoList = CGWindowListCopyWindowInfo([.optionIncludingWindow], windowID) as? [[String: Any]],
+              let info = infoList.first,
+              (info[kCGWindowIsOnscreen as String] as? Bool) == true,
+              let boundsDict = info[kCGWindowBounds as String] as? [String: Any],
+              let quartz = cgRect(fromWindowBounds: boundsDict),
+              quartz.width > 1, quartz.height > 1
+        else { return nil }
+        return quartzRectToCocoa(quartz)
+    }
+
     private static func cgRect(fromWindowBounds dict: [String: Any]) -> CGRect? {
         func num(_ key: String) -> CGFloat? {
             if let n = dict[key] as? CGFloat { return n }

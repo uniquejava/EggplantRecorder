@@ -26,7 +26,7 @@ final class AppState: ObservableObject {
     let filesList = FilesListController()
     let statusItem = StatusItemController()
     let areaSelection = AreaSelectionController()
-    let areaRecordingChrome = AreaRecordingChromeController()
+    let recordingChrome = RecordingChromeController()
     let windowSelection = WindowSelectionController()
     let editor = EditorController()
     let countdown = CountdownController()
@@ -36,9 +36,10 @@ final class AppState: ObservableObject {
     /// Set after window pick; consumed when OptionsBar records.
     private(set) var pendingWindow: WindowSelectionResult?
 
-    /// Kept while recording so area chrome / restart can reuse the same rect + settings.
+    /// Kept while recording so recording chrome / restart can reuse the same target + settings.
     private var activeRecordingConfig: RecordingConfig?
     private var activeArea: AreaSelectionResult?
+    private var activeWindow: WindowHit?
 
     private var elapsedTimer: Timer?
     private var recordingAnchor = Date()
@@ -60,7 +61,7 @@ final class AppState: ObservableObject {
         optionsBar.configure(appState: self)
         filesList.configure(appState: self)
         editor.configure(appState: self)
-        areaRecordingChrome.configure(appState: self)
+        recordingChrome.configure(appState: self)
         Task { await refreshRecordings() }
     }
 
@@ -172,29 +173,21 @@ final class AppState: ObservableObject {
         do {
             try RecordingsLibrary.ensureDirectory()
             let output = RecordingsLibrary.makeOutputURL(kind: config.kind)
-            // Capture area before clearing pending — needed for in-recording chrome.
-            let areaForChrome: AreaSelectionResult? = {
-                if config.kind == .area {
-                    if let pending = pendingArea { return pending }
-                    if let active = activeArea { return active }
-                    if let rect = config.areaSourceRect,
-                       let displayID = Self.displayID(from: config.sourceID),
-                       let w = config.areaPixelWidth,
-                       let h = config.areaPixelHeight
-                    {
-                        return AreaSelectionResult(
-                            displayID: displayID,
-                            sourceRect: rect,
-                            pixelWidth: w,
-                            pixelHeight: h
-                        )
-                    }
-                }
-                return nil
-            }()
+            // Resolve the chrome target before clearing pending — needed for in-recording chrome.
+            let chromeTarget = chromeTarget(for: config)
             try await recorder.start(config: config, outputURL: output)
             activeRecordingConfig = config
-            activeArea = areaForChrome
+            switch chromeTarget {
+            case .area(let area):
+                activeArea = area
+                activeWindow = nil
+            case .window(let hit):
+                activeArea = nil
+                activeWindow = hit
+            case nil:
+                activeArea = nil
+                activeWindow = nil
+            }
             pendingArea = nil
             pendingWindow = nil
             areaSelection.hide()
@@ -207,16 +200,46 @@ final class AppState: ObservableObject {
             pauseBeganAt = nil
             startElapsedTimer()
             statusItem.enterRecordingMode()
-            if let areaForChrome {
-                areaRecordingChrome.show(area: areaForChrome)
+            if let chromeTarget {
+                recordingChrome.show(target: chromeTarget)
             } else {
-                areaRecordingChrome.hide()
+                recordingChrome.hide()
             }
         } catch {
             lastErrorMessage = error.localizedDescription
             phase = .configuring
             areaSelection.setSelectionLocked(false)
             optionsBar.showError(error.localizedDescription)
+        }
+    }
+
+    /// Area and Window recordings get a dashed capture frame + mini control bar; full-screen doesn't.
+    /// Falls back to the config so Restart (which has no pending selection) still gets its chrome.
+    private func chromeTarget(for config: RecordingConfig) -> RecordingChromeTarget? {
+        switch config.kind {
+        case .screen:
+            return nil
+        case .area:
+            if let area = pendingArea ?? activeArea { return .area(area) }
+            guard let rect = config.areaSourceRect,
+                  let displayID = Self.displayID(from: config.sourceID),
+                  let width = config.areaPixelWidth,
+                  let height = config.areaPixelHeight
+            else { return nil }
+            return .area(
+                AreaSelectionResult(
+                    displayID: displayID,
+                    sourceRect: rect,
+                    pixelWidth: width,
+                    pixelHeight: height
+                )
+            )
+        case .window:
+            if let hit = pendingWindow?.hit ?? activeWindow { return .window(hit) }
+            guard let windowID = Self.windowID(from: config.sourceID),
+                  let frame = WindowHitTester.liveFrame(of: windowID)
+            else { return nil }
+            return .window(WindowHit(windowID: windowID, frame: frame, title: "", ownerName: ""))
         }
     }
 
@@ -266,31 +289,23 @@ final class AppState: ObservableObject {
             isPaused = true
         }
         statusItem.refreshRecordingControls()
-        areaRecordingChrome.reload()
+        recordingChrome.reload()
     }
 
     func stopRecording() async {
         guard phase == .recording else { return }
         stopElapsedTimer()
-        areaRecordingChrome.hide()
+        recordingChrome.hide()
         do {
             let path = try await recorder.stop()
-            phase = .idle
-            isPaused = false
-            activeRecordingConfig = nil
-            activeArea = nil
-            statusItem.enterIdleMode()
+            returnToIdle()
             highlightPath = path
             await refreshRecordings()
             if AppPreferences.shared.openFilesListAfterRecording {
                 filesList.show(highlightPath: path)
             }
         } catch {
-            phase = .idle
-            isPaused = false
-            activeRecordingConfig = nil
-            activeArea = nil
-            statusItem.enterIdleMode()
+            returnToIdle()
             lastErrorMessage = error.localizedDescription
             presentAlert(title: "Recording failed", message: error.localizedDescription)
         }
@@ -300,41 +315,44 @@ final class AppState: ObservableObject {
     func cancelRecording() async {
         guard phase == .recording else { return }
         stopElapsedTimer()
-        areaRecordingChrome.hide()
+        recordingChrome.hide()
         do {
             let path = try await recorder.stop()
             try? FileManager.default.removeItem(atPath: path)
         } catch {
             lastErrorMessage = error.localizedDescription
         }
-        phase = .idle
-        isPaused = false
-        activeRecordingConfig = nil
-        activeArea = nil
-        statusItem.enterIdleMode()
+        returnToIdle()
     }
 
-    /// Discard current take and start again with the same settings / area.
+    /// Discard current take and start again with the same settings / area or window.
     func restartRecording() async {
         guard phase == .recording, let config = activeRecordingConfig else { return }
         stopElapsedTimer()
-        areaRecordingChrome.hide()
+        recordingChrome.hide()
         do {
             let path = try await recorder.stop()
             try? FileManager.default.removeItem(atPath: path)
         } catch {
             lastErrorMessage = error.localizedDescription
-            phase = .idle
-            isPaused = false
-            activeRecordingConfig = nil
-            activeArea = nil
-            statusItem.enterIdleMode()
+            returnToIdle()
             return
         }
+        // Keep the active target — startRecording reuses it for the next take's chrome.
+        returnToIdle(keepActiveTarget: true)
+        await startRecording(config: config, skipCountdown: true)
+    }
+
+    /// Shared teardown after a take ends.
+    private func returnToIdle(keepActiveTarget: Bool = false) {
         phase = .idle
         isPaused = false
+        if !keepActiveTarget {
+            activeRecordingConfig = nil
+            activeArea = nil
+            activeWindow = nil
+        }
         statusItem.enterIdleMode()
-        await startRecording(config: config, skipCountdown: true)
     }
 
     func showFilesList() {
@@ -367,7 +385,7 @@ final class AppState: ObservableObject {
         }
         if phase == .recording {
             Task {
-                areaRecordingChrome.hide()
+                recordingChrome.hide()
                 _ = try? await recorder.stop()
                 NSApp.terminate(nil)
             }
@@ -398,7 +416,7 @@ final class AppState: ObservableObject {
         let wall = Date().timeIntervalSince(recordingAnchor) - pausedAccumulated
         elapsedSeconds = max(0, wall)
         statusItem.refreshRecordingControls()
-        areaRecordingChrome.reload()
+        recordingChrome.reload()
     }
 
     private func presentAlert(title: String, message: String) {
@@ -413,5 +431,11 @@ final class AppState: ObservableObject {
         guard sourceID.hasPrefix("display:") else { return nil }
         guard let value = UInt32(String(sourceID.dropFirst("display:".count))) else { return nil }
         return CGDirectDisplayID(value)
+    }
+
+    private static func windowID(from sourceID: String) -> CGWindowID? {
+        guard sourceID.hasPrefix("window:") else { return nil }
+        guard let value = UInt32(String(sourceID.dropFirst("window:".count))) else { return nil }
+        return CGWindowID(value)
     }
 }

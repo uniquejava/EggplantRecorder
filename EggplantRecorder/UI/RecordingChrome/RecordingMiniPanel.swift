@@ -1,8 +1,8 @@
 import AppKit
 
-final class AreaRecordingMiniPanel: NSPanel {
+final class RecordingMiniPanel: NSPanel {
     private weak var appState: AppState?
-    private let chrome = AreaRecordingMiniBarView()
+    private let chrome = RecordingMiniBarView()
 
     init(appState: AppState?) {
         self.appState = appState
@@ -60,19 +60,22 @@ final class AreaRecordingMiniPanel: NSPanel {
         ])
     }
 
-    func position(below selectionGlobal: CGRect, on screen: NSScreen) {
+    func position(below framedGlobal: CGRect, on screen: NSScreen) {
         syncContentSize(keepTopFixed: false)
         let size = chrome.fittingSize
 
         let gap: CGFloat = 10
         var origin = CGPoint(
-            x: selectionGlobal.midX - size.width / 2,
-            y: selectionGlobal.minY - gap - size.height
+            x: framedGlobal.midX - size.width / 2,
+            y: framedGlobal.minY - gap - size.height
         )
-        // Flip above the selection when there isn't room below.
+        // Flip above the frame when there isn't room below.
         if origin.y < screen.visibleFrame.minY + 4 {
-            origin.y = selectionGlobal.maxY + gap
+            origin.y = framedGlobal.maxY + gap
         }
+        // …and clamp back inside if it doesn't fit above either (window taller than the screen).
+        let maxY = screen.visibleFrame.maxY - size.height - 4
+        origin.y = min(max(origin.y, screen.visibleFrame.minY + 4), maxY)
         let maxX = screen.visibleFrame.maxX - size.width - 4
         let minX = screen.visibleFrame.minX + 4
         origin.x = min(max(origin.x, minX), maxX)
