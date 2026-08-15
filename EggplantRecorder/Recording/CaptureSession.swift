@@ -403,7 +403,9 @@ final class CaptureSession: NSObject, SCStreamDelegate, SCStreamOutput {
         lastError = error
     }
 
-    private static func friendlyStartError(_ error: Error) -> Error {
+    /// `-3820` is what AVFoundation reports when mic capture can't start — usually the missing
+    /// `com.apple.security.device.audio-input` entitlement, which otherwise fails silently.
+    static func friendlyStartError(_ error: Error) -> Error {
         let ns = error as NSError
         if ns.code == -3820 {
             return CaptureError.microphoneStartFailed

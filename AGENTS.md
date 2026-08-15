@@ -6,7 +6,7 @@ macOS **15+** menu-bar screen recorder (OMI-like). **SwiftUI + AppKit**.
 
 Product requirements: [`docs/product.md`](docs/product.md).
 
-**Status (2026-08-15):** MVP + Area + Window hover-pick + solid options bar (FPS / Resolution / Countdown) + in-app Edit/trim/export on `main`. In-recording chrome (dashed frame + mini bar) now covers **Area and Window**. Double-tap Stop/Record re-entry crash fixed (`AppPhase.starting` / `.stopping`) — **reproduced on the pre-fix build and verified gone**. Remaining known issues: [`docs/code-audit.md`](docs/code-audit.md).
+**Status (2026-08-15):** MVP + Area + Window hover-pick + solid options bar (FPS / Resolution / Countdown) + in-app Edit/trim/export on `main`. In-recording chrome (dashed frame + mini bar) now covers **Area and Window**. Double-tap Stop/Record re-entry crash fixed (`AppPhase.starting` / `.stopping`) — **reproduced on the pre-fix build and verified gone**. First test target landed: **`EggplantRecorderTests`, 156 tests** (audit #2). Remaining known issues: [`docs/code-audit.md`](docs/code-audit.md).
 
 ## Identity
 
@@ -26,7 +26,7 @@ Product requirements: [`docs/product.md`](docs/product.md).
 ## Session continuity (start here)
 
 1. Read this file + skim `docs/product.md` (flow + acceptance).
-2. After code changes: **killall → xcodebuild `-derivedDataPath build` → open** `build/Build/Products/Debug/EggplantRecorder.app` (see Commands). Avoid `/Applications` and Xcode’s default DerivedData (often stale).
+2. After code changes: **killall → xcodebuild `-derivedDataPath build` → open** `build/Build/Products/Debug/EggplantRecorder.app` (see Commands). Avoid `/Applications` and Xcode’s default DerivedData (often stale). Touched anything pure? Run `xcodebuild … test` too.
 3. Capture: ScreenCaptureKit dual audio + pause timeline; Area = `sourceRect`; Window = CGWindowList hit-test → `window:ID`; Window Area = hit-test → Area preset. Options FPS / Resolution / Countdown apply at capture time.
 4. Commit only if asked (`usegmail` when they want that author).
 
@@ -36,10 +36,11 @@ Audit backlog with verified `file:line` detail: [`docs/code-audit.md`](docs/code
 
 | Priority | Item | Notes |
 |----------|------|--------|
-| **High** | Test target (none exists) | `CaptureTiming` PTS math, `ExportSettings`, `RecordingsLibrary` path guards are pure + untested — and the new `AppPhase` start/stop gate has no coverage — audit #2 |
+| **High** | `restoreSelection` rejects nothing | Both "wrong display size" guards are unreachable — a remembered area from a bigger display comes back clamped to garbage instead of falling back — audit #10 |
 | Medium | Serial duration probe in `RecordingsLibrary.list()` | Stalls Files List linearly with library size — audit #3 |
 | Medium | OMI Convert/Compress | Menu present, disabled (`FilesListView`) — implement later |
-| Low | Smaller audit cleanups | Dup UserDefaults key, filename-inferred kind, overlay boilerplate, dead `anchorRect`, force unwrap, sandbox bookmark — audit #4-9 |
+| Medium | Fake the capture session | `RecorderController` holds `private let session = CaptureSession()`; a protocol seam would let the audit #1 start/stop happy path be tested, not just its guards |
+| Low | Smaller audit cleanups | Filename-inferred kind, overlay boilerplate, dead `anchorRect`, sandbox bookmark, audit #11-12 |
 | Low | Remaining options placeholders | PiP / Click Zoom / Keyboard / Timing Recording |
 | Low | Dock / app icon polish | Done — `AppIcon.appiconset` + `scripts/generate_app_icons.py` (see `docs/app-icon.md`) |
 
@@ -94,9 +95,12 @@ EggplantRecorder/
     ExportService.swift             # trim MP4; video re-encode, audio passthrough
     QuickLookController.swift
   Assets.xcassets/RecorderGlyph.imageset/
+EggplantRecorderTests/                # XCTest target (hosted in the app); 156 tests
+  LibraryRootFixture.swift            # temp library root + UserDefaults save/restore
+  *Tests.swift                        # one file per unit under test
 ```
 
-Xcode project uses **PBXFileSystemSynchronizedRootGroup** — new files under `EggplantRecorder/` are picked up automatically.
+Xcode project uses **PBXFileSystemSynchronizedRootGroup** — new files under `EggplantRecorder/` **and** `EggplantRecorderTests/` are picked up automatically.
 
 ## Hard-won pitfalls (do not regress)
 
@@ -113,7 +117,8 @@ Xcode project uses **PBXFileSystemSynchronizedRootGroup** — new files under `E
 11. **Options chrome:** solid fill (no outer SwiftUI padding / no glass halo). Open at `screen.frame.minY + 16`, bottom-centered.
 12. **Window pick:** hover+click only; snapshot hit-tester before overlays; exclude own PID.
 13. **Recording chrome (Area + Window):** border window must `ignoresMouseEvents`; mini panel is a separate higher-level panel so clicks reach Pause/Stop. Area excludes both via `excludePID`; Window capture is `desktopIndependentWindow`, so chrome can't leak into the MP4. Window chrome re-reads `WindowHitTester.liveFrame(of:)` each tick to follow the window — nil means gone/minimized, so drop the frame but keep the controls.
-14. **Never re-enter start/stop:** `AVAssetWriter` finished twice raises an ObjC exception Swift cannot catch — a hard crash, and the recording is lost. `AppPhase.starting` / `.stopping` are set **synchronously before** the first `await` for exactly this reason (`beginStopping()`; `canBeginSetup` for entry). Any new capture entry point must set them before awaiting and gate on them, and any new control must go inert while `phase.isTransitioning`. `CaptureSession.stopAndFinish()` is idempotent as a second layer — keep it that way. Also never `markAsFinished()` a writer whose session never started (Stop before the first frame): same uncatchable exception.
+14. **Never re-enter start/stop:** `AVAssetWriter` finished twice raises an ObjC exception Swift cannot catch — a hard crash, and the recording is lost. `AppPhase.starting` / `.stopping` are set **synchronously before** the first `await` for exactly this reason (`beginStopping()`; `canBeginSetup` for entry). Any new capture entry point must set them before awaiting and gate on them, and any new control must go inert while `phase.isTransitioning`. `CaptureSession.stopAndFinish()` is idempotent as a second layer — keep it that way. Also never `markAsFinished()` a writer whose session never started (Stop before the first frame): same uncatchable exception. **Covered by `OptionsBarRecordGateTests` / `AppPhaseTests` / `RecorderControllerGuardTests` — keep them passing.**
+15. **Pure logic goes in a helper, not inside a view:** `@testable import` reaches `internal`, never `private`, and a SwiftUI `View` / `NSView` has no instance a test can hold. Geometry, clamping, formatting and state decisions belong in a free-standing type (see `AreaSelectionGeometry`, extracted from `AreaSelectionCanvas`) with the view passing its `bounds` / sizes in. The still-uncovered table in `docs/code-audit.md` is the list of places this wasn't done yet.
 
 ## Stack
 
@@ -140,8 +145,23 @@ killall EggplantRecorder 2>/dev/null
 xcodebuild -scheme EggplantRecorder -configuration Debug -derivedDataPath build build
 open build/Build/Products/Debug/EggplantRecorder.app
 
+# Unit tests (156, ~0.2 s) — run these after touching anything pure
+xcodebuild -scheme EggplantRecorder -configuration Debug -derivedDataPath build test
+
 open EggplantRecorder.xcodeproj
 ```
+
+`EggplantRecorderTests` is a **hosted** bundle (`TEST_HOST` = the app), so `xcodebuild test` launches
+the app and injects — it needs a real logged-in GUI session, and will fail with
+`IDETestOperationsObserverErrorDomain Code=13 "Early unexpected exit"` over a headless SSH connection.
+Both `EggplantRecorderTests/` and `EggplantRecorder/` are `PBXFileSystemSynchronizedRootGroup`s, so new
+files in either are picked up with no project edits. The scheme is **shared** (checked in under
+`xcshareddata/`) so the test action doesn't depend on per-machine autocreation.
+
+Tests run inside the real app, against the real `UserDefaults` domain. Anything that writes a
+preference must save and restore it — `LibraryRootFixture` does this for the library folder, and
+`OptionsBarRecordGateTests` does it for the capture defaults (assigning `model.frameRate` fires a
+`persist()` didSet). Skipping that will quietly change the user's settings.
 
 Do **not** open a different DerivedData path, and do **not** skip `-derivedDataPath build`.
 `build/` is gitignored. Do **not** launch `/Applications/EggplantRecorder.app` (often stale — still has old `icons.icns`).

@@ -130,8 +130,9 @@ final class AreaSelectionCanvas: NSView {
 
         dragKind = .creating
         dragStart = point
-        selectionInWindowCoords = CGRect(origin: point, size: .zero)
-        selectionAtDragStart = selectionInWindowCoords!
+        let empty = CGRect(origin: point, size: .zero)
+        selectionInWindowCoords = empty
+        selectionAtDragStart = empty
         needsDisplay = true
     }
 
@@ -170,17 +171,8 @@ final class AreaSelectionCanvas: NSView {
     override func mouseUp(with event: NSEvent) {
         guard !isLocked else { return }
         if let selection = selectionInWindowCoords, selection.width < minSize || selection.height < minSize {
-            var r = selection
-            let area = bounds
-            if r.width < minSize {
-                r.size.width = minSize
-                r.origin.x = min(max(area.minX, r.midX - minSize / 2), area.maxX - minSize)
-            }
-            if r.height < minSize {
-                r.size.height = minSize
-                r.origin.y = min(max(area.minY, r.midY - minSize / 2), area.maxY - minSize)
-            }
-            selectionInWindowCoords = clamp(r)
+            let grown = AreaSelectionGeometry.enforceMinimum(selection, in: bounds, minSize: minSize)
+            selectionInWindowCoords = clamp(grown)
             needsDisplay = true
             onSelectionChanged?()
         }
@@ -188,84 +180,18 @@ final class AreaSelectionCanvas: NSView {
     }
 
     private func clamp(_ rect: CGRect) -> CGRect {
-        let area = bounds
-        var r = rect
-        r.size.width = max(minSize, min(r.width, area.width))
-        r.size.height = max(minSize, min(r.height, area.height))
-        if r.minX < area.minX { r.origin.x = area.minX }
-        if r.minY < area.minY { r.origin.y = area.minY }
-        if r.maxX > area.maxX { r.origin.x = area.maxX - r.width }
-        if r.maxY > area.maxY { r.origin.y = area.maxY - r.height }
-        return r
+        AreaSelectionGeometry.clamp(rect, in: bounds, minSize: minSize)
     }
 
-    /// Move the grabbed edge(s) by drag delta from mouseDown — zero movement keeps the rect unchanged.
     private func resizedByDelta(_ start: CGRect, handle: AreaHandlePosition, dx: CGFloat, dy: CGFloat) -> CGRect {
-        var minX = start.minX
-        var maxX = start.maxX
-        var minY = start.minY
-        var maxY = start.maxY
-
-        switch handle {
-        case .topLeft:
-            minX += dx
-            maxY += dy
-        case .top:
-            maxY += dy
-        case .topRight:
-            maxX += dx
-            maxY += dy
-        case .left:
-            minX += dx
-        case .right:
-            maxX += dx
-        case .bottomLeft:
-            minX += dx
-            minY += dy
-        case .bottom:
-            minY += dy
-        case .bottomRight:
-            maxX += dx
-            minY += dy
-        }
-
-        return CGRect(
-            x: min(minX, maxX),
-            y: min(minY, maxY),
-            width: abs(maxX - minX),
-            height: abs(maxY - minY)
-        )
+        AreaSelectionGeometry.resizedByDelta(start, handle: handle, dx: dx, dy: dy)
     }
 
     private func handleRect(_ handle: AreaHandlePosition, in selection: CGRect) -> CGRect {
-        let p = handlePoint(handle, in: selection)
-        return CGRect(
-            x: p.x - handleSize / 2,
-            y: p.y - handleSize / 2,
-            width: handleSize,
-            height: handleSize
-        )
-    }
-
-    private func handlePoint(_ handle: AreaHandlePosition, in selection: CGRect) -> CGPoint {
-        switch handle {
-        case .topLeft: return CGPoint(x: selection.minX, y: selection.maxY)
-        case .top: return CGPoint(x: selection.midX, y: selection.maxY)
-        case .topRight: return CGPoint(x: selection.maxX, y: selection.maxY)
-        case .left: return CGPoint(x: selection.minX, y: selection.midY)
-        case .right: return CGPoint(x: selection.maxX, y: selection.midY)
-        case .bottomLeft: return CGPoint(x: selection.minX, y: selection.minY)
-        case .bottom: return CGPoint(x: selection.midX, y: selection.minY)
-        case .bottomRight: return CGPoint(x: selection.maxX, y: selection.minY)
-        }
+        AreaSelectionGeometry.handleRect(handle, in: selection, handleSize: handleSize)
     }
 
     private func hitHandle(at point: CGPoint, in selection: CGRect) -> AreaHandlePosition? {
-        for handle in AreaHandlePosition.allCases {
-            if handleRect(handle, in: selection).insetBy(dx: -4, dy: -4).contains(point) {
-                return handle
-            }
-        }
-        return nil
+        AreaSelectionGeometry.hitHandle(at: point, in: selection, handleSize: handleSize)
     }
 }

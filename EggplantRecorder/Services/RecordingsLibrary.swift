@@ -31,15 +31,10 @@ struct RecordingEntry: Identifiable, Hashable {
 }
 
 enum RecordingsLibrary {
-    private static let libraryFolderPathKey = "click.yinsb.eggplantrecorder.libraryFolderPath"
-
+    /// Reads `UserDefaults` directly rather than `AppPreferences.shared` because this type runs
+    /// off the main actor. `RecordingsLibraryPaths` keeps the key + fallback rule shared.
     static var directoryURL: URL {
-        let trimmed = (UserDefaults.standard.string(forKey: libraryFolderPathKey) ?? "")
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-        if trimmed.isEmpty {
-            return RecordingsLibraryPaths.defaultFolderURL
-        }
-        return URL(fileURLWithPath: trimmed, isDirectory: true)
+        RecordingsLibraryPaths.currentFolderURL
     }
 
     static func ensureDirectory() throws {
@@ -195,7 +190,12 @@ enum RecordingsLibrary {
         }
     }
 
-    private static func ensureLibraryPath(_ path: String) throws {
+    /// Rejects paths outside the library root (`../` escapes, absolute paths elsewhere, and
+    /// string-prefix siblings). `internal` so the guard is unit-testable — it is a security
+    /// boundary, not a detail. Note the symlink handling is one-way: the fallback below *accepts*
+    /// a path that only resolves inside, and only when the whole path already exists. See findings
+    /// #12 in `docs/code-audit.md`.
+    static func ensureLibraryPath(_ path: String) throws {
         let file = URL(fileURLWithPath: path).standardizedFileURL
         let root = directoryURL.standardizedFileURL
         if urlIsInside(file, root: root) { return }

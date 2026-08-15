@@ -1,6 +1,6 @@
 import Foundation
 
-enum CaptureError: LocalizedError {
+enum CaptureError: LocalizedError, Equatable {
     case alreadyRecording
     case microphoneDenied
     case microphoneStartFailed

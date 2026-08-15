@@ -2,9 +2,27 @@ import AppKit
 import Combine
 import Foundation
 
+/// Single owner of "where do recordings live". Deliberately **not** actor-isolated: both
+/// `AppPreferences` (main actor) and `RecordingsLibrary` (off the main actor) resolve the
+/// library folder through here, so the key and the fallback rule can't drift apart.
 enum RecordingsLibraryPaths {
     static let defaultFolderURL: URL = FileManager.default.homeDirectoryForCurrentUser
         .appendingPathComponent("Movies/EggplantRecorder", isDirectory: true)
+
+    static let folderPathKey = "click.yinsb.eggplantrecorder.libraryFolderPath"
+
+    /// Blank / whitespace-only / unset all mean "use the default folder".
+    static func resolve(rawPath: String?) -> URL {
+        let trimmed = (rawPath ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
+            return defaultFolderURL
+        }
+        return URL(fileURLWithPath: trimmed, isDirectory: true)
+    }
+
+    static var currentFolderURL: URL {
+        resolve(rawPath: UserDefaults.standard.string(forKey: folderPathKey))
+    }
 }
 
 /// UserDefaults-backed preferences shown in Preferences → General.
@@ -13,7 +31,7 @@ final class AppPreferences: ObservableObject {
     static let shared = AppPreferences()
 
     private enum Key {
-        static let libraryFolderPath = "click.yinsb.eggplantrecorder.libraryFolderPath"
+        static let libraryFolderPath = RecordingsLibraryPaths.folderPathKey
         static let displayRecordingTime = "click.yinsb.eggplantrecorder.displayRecordingTime"
         static let openFilesListAfterRecording = "click.yinsb.eggplantrecorder.openFilesListAfterRecording"
         static let openFilesListAfterEditing = "click.yinsb.eggplantrecorder.openFilesListAfterEditing"
@@ -88,11 +106,7 @@ final class AppPreferences: ObservableObject {
     }
 
     var libraryDirectoryURL: URL {
-        let trimmed = libraryFolderPath.trimmingCharacters(in: .whitespacesAndNewlines)
-        if trimmed.isEmpty {
-            return RecordingsLibraryPaths.defaultFolderURL
-        }
-        return URL(fileURLWithPath: trimmed, isDirectory: true)
+        RecordingsLibraryPaths.resolve(rawPath: libraryFolderPath)
     }
 
     var libraryFolderDisplayPath: String {
