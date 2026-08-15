@@ -26,7 +26,7 @@ enum CaptureSourcesError: LocalizedError {
         case .noPermission(let message):
             return message
         case .emptyAfterGrant:
-            return "Screen Recording looks enabled, but no displays were listed. Quit and relaunch EggplantRecorder so the permission takes effect."
+            return L10n.tr("sources.emptyAfterGrant")
         }
     }
 }
@@ -39,7 +39,7 @@ enum CaptureSources {
         } catch {
             throw CaptureSourcesError.noPermission(
                 error.localizedDescription.isEmpty
-                    ? "Grant Screen Recording access to list displays and windows."
+                    ? L10n.tr("sources.grantToList")
                     : error.localizedDescription
             )
         }
@@ -50,7 +50,7 @@ enum CaptureSources {
                 CaptureSource(
                     id: "display:\(display.displayID)",
                     kind: .screen,
-                    name: "Screen \(display.width)×\(display.height)",
+                    name: L10n.tr("options.screenSize", display.width, display.height),
                     width: display.width,
                     height: display.height
                 )

@@ -49,7 +49,7 @@ final class CaptureResolutionTests: XCTestCase {
     }
 
     func testCountdownLabels() {
-        XCTAssertEqual(CaptureCountdown.none.label, "none")
+        XCTAssertEqual(CaptureCountdown.none.label, L10n.tr("countdown.none"))
         XCTAssertEqual(CaptureCountdown.three.label, "3s")
         XCTAssertEqual(CaptureCountdown.none.rawValue, 0)
     }

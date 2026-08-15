@@ -155,7 +155,7 @@ struct CountdownView: View {
                 .id(model.remaining)
                 .transition(.opacity)
 
-            Text("Esc to cancel")
+            Text(L10n.tr("countdown.escCancel"))
                 .font(.system(size: 11, weight: .medium))
                 .foregroundStyle(.white.opacity(0.55))
         }

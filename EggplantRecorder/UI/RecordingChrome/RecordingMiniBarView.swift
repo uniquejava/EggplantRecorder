@@ -69,19 +69,19 @@ final class RecordingMiniBarView: NSView {
         configureCircleButton(
             annotateButton,
             image: Self.circleSymbolIcon("pencil", tint: NSColor.black.withAlphaComponent(0.45)),
-            tooltip: "Annotate (coming soon)"
+            tooltip: L10n.tr("chrome.annotateSoon")
         )
         annotateButton.isEnabled = false
         annotateButton.alphaValue = 0.55
 
-        configureCircleButton(stopButton, image: Self.stopIcon(), tooltip: "Stop")
+        configureCircleButton(stopButton, image: Self.stopIcon(), tooltip: L10n.tr("common.stop"))
         stopButton.target = self
         stopButton.action = #selector(stopTapped)
 
         configureCircleButton(
             pauseButton,
             image: Self.circleSymbolIcon("pause.fill"),
-            tooltip: "Pause"
+            tooltip: L10n.tr("common.pause")
         )
         pauseButton.target = self
         pauseButton.action = #selector(pauseTapped)
@@ -89,7 +89,7 @@ final class RecordingMiniBarView: NSView {
         configureCircleButton(
             restartButton,
             image: Self.circleSymbolIcon("arrow.counterclockwise"),
-            tooltip: "Restart"
+            tooltip: L10n.tr("common.restart")
         )
         restartButton.target = self
         restartButton.action = #selector(restartTapped)
@@ -97,7 +97,7 @@ final class RecordingMiniBarView: NSView {
         configureCircleButton(
             cancelButton,
             image: Self.circleSymbolIcon("xmark"),
-            tooltip: "Cancel"
+            tooltip: L10n.tr("common.cancel")
         )
         cancelButton.target = self
         cancelButton.action = #selector(cancelTapped)
@@ -224,7 +224,7 @@ final class RecordingMiniBarView: NSView {
             timerLabel.stringValue = MediaProbe.formatClock(elapsed)
         }
         let symbol = isPaused ? "play.fill" : "pause.fill"
-        let tip = isPaused ? "Resume" : "Pause"
+        let tip = isPaused ? L10n.tr("common.resume") : L10n.tr("common.pause")
         pauseButton.image = Self.circleSymbolIcon(symbol)
         pauseButton.toolTip = tip
     }
@@ -290,7 +290,7 @@ final class RecordingMiniBarView: NSView {
 
 final class CancelConfirmBannerView: NSView {
     private let label = NSTextField(wrappingLabelWithString:
-        "Cancel will discard the recorded content, click again to confirm"
+        L10n.tr("chrome.cancelDiscard")
     )
 
     override init(frame frameRect: NSRect) {

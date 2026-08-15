@@ -118,7 +118,7 @@ enum RecordingsLibrary {
             throw NSError(
                 domain: "RecordingsLibrary",
                 code: 2,
-                userInfo: [NSLocalizedDescriptionKey: "Name cannot be empty."]
+                userInfo: [NSLocalizedDescriptionKey: L10n.tr("library.nameEmpty")]
             )
         }
 
@@ -131,7 +131,7 @@ enum RecordingsLibrary {
             throw NSError(
                 domain: "RecordingsLibrary",
                 code: 3,
-                userInfo: [NSLocalizedDescriptionKey: "A recording named “\(cleaned)” already exists."]
+                userInfo: [NSLocalizedDescriptionKey: L10n.tr("library.nameExists", cleaned)]
             )
         }
         try FileManager.default.moveItem(at: source, to: destination)
@@ -182,10 +182,10 @@ enum RecordingsLibrary {
     private static func presentOpenError(_ error: Error, path: String) {
         DispatchQueue.main.async {
             let alert = NSAlert()
-            alert.messageText = "Could not open recording"
+            alert.messageText = L10n.tr("files.couldNotOpen")
             alert.informativeText = "\(error.localizedDescription)\n\n\(path)"
             alert.alertStyle = .warning
-            alert.addButton(withTitle: "OK")
+            alert.addButton(withTitle: L10n.tr("common.ok"))
             alert.runModal()
         }
     }
@@ -206,7 +206,7 @@ enum RecordingsLibrary {
             throw NSError(
                 domain: "RecordingsLibrary",
                 code: 1,
-                userInfo: [NSLocalizedDescriptionKey: "Path is outside the recordings library."]
+                userInfo: [NSLocalizedDescriptionKey: L10n.tr("library.pathOutside")]
             )
         }
     }

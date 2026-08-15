@@ -29,9 +29,9 @@ final class RecordingKindTests: XCTestCase {
     }
 
     func testDisplayNames() {
-        XCTAssertEqual(RecordingKind.screen.displayName, "Screen")
-        XCTAssertEqual(RecordingKind.window.displayName, "Window")
-        XCTAssertEqual(RecordingKind.area.displayName, "Area")
+        XCTAssertEqual(RecordingKind.screen.displayName, L10n.tr("kind.screen"))
+        XCTAssertEqual(RecordingKind.window.displayName, L10n.tr("kind.window"))
+        XCTAssertEqual(RecordingKind.area.displayName, L10n.tr("kind.area"))
     }
 
     func testSortsByDisplayName() {

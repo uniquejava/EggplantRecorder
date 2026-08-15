@@ -24,7 +24,7 @@ struct AboutView: View {
                 .multilineTextAlignment(.center)
 
             VStack(spacing: 4) {
-                Text("Author · \(AppAboutInfo.author)")
+                Text(L10n.tr("about.author", AppAboutInfo.author))
                     .font(.system(size: 12))
 
                 Link(AppAboutInfo.githubDisplay, destination: AppAboutInfo.githubURL)
@@ -36,7 +36,7 @@ struct AboutView: View {
                 .frame(maxWidth: 280)
 
             VStack(spacing: 4) {
-                Text("Built with")
+                Text(L10n.tr("about.builtWith"))
                     .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(.secondary)
                 Text(AppAboutInfo.techStack)
@@ -86,7 +86,7 @@ enum AppAboutInfo {
     static var versionLine: String {
         let short = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.0"
         let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "0"
-        return "Version \(short) (\(build))"
+        return L10n.tr("about.version", short, build)
     }
 
     static var copyright: String {

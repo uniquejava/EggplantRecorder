@@ -54,7 +54,7 @@ struct OptionsBarView: View {
             .buttonStyle(.plain)
             .padding(.top, 6)
             .padding(.trailing, 6)
-            .help("Close")
+            .help(L10n.tr("common.close"))
         }
         .background {
             RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
@@ -83,9 +83,9 @@ struct OptionsBarView: View {
     private var permissionBanner: String? {
         switch model.permissionState {
         case .needsGrant:
-            return "Screen Recording access is required. Grant access, then relaunch if sources stay empty."
+            return L10n.tr("options.permissionGrant")
         case .needsRelaunch:
-            return "Permission looks enabled but no sources appeared. Relaunch EggplantRecorder (closing the panel is not enough)."
+            return L10n.tr("options.permissionRelaunch")
         default:
             return nil
         }

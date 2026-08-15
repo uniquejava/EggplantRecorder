@@ -19,7 +19,7 @@ final class EditorController {
         }
         install(entry: entry)
         NSApp.setActivationPolicy(.regular)
-        window?.title = "Edit — \(entry.name)"
+        window?.title = L10n.tr("editor.titleNamed", entry.name)
         guard let window else { return }
         window.makeKeyAndOrderFront(nil)
         if created {
@@ -89,7 +89,7 @@ final class EditorController {
             backing: .buffered,
             defer: false
         )
-        window.title = "Edit"
+        window.title = L10n.tr("editor.title")
         window.contentMinSize = NSSize(width: 1000, height: 640)
         window.appearance = NSAppearance(named: .aqua)
         window.backgroundColor = EditorChrome.nsWindow

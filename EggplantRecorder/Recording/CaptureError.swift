@@ -12,19 +12,19 @@ enum CaptureError: LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case .alreadyRecording:
-            return "Already recording"
+            return L10n.tr("error.alreadyRecording")
         case .microphoneDenied:
-            return "Microphone permission denied. Enable it in System Settings → Privacy & Security → Microphone."
+            return L10n.tr("error.microphoneDenied")
         case .microphoneStartFailed:
-            return "Failed to start microphone capture. Pick another input device, or grant Microphone permission in System Settings."
+            return L10n.tr("error.microphoneStartFailed")
         case .cannotAddVideoInput:
-            return "Cannot add video input"
+            return L10n.tr("error.cannotAddVideoInput")
         case .displayNotFound:
-            return "Display not found"
+            return L10n.tr("error.displayNotFound")
         case .windowNotFound:
-            return "Window not found"
+            return L10n.tr("error.windowNotFound")
         case .finalizeFailed:
-            return "Failed to finalize recording"
+            return L10n.tr("error.finalizeFailed")
         }
     }
 }

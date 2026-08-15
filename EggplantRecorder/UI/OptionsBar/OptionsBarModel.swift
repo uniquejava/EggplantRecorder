@@ -114,14 +114,14 @@ final class OptionsBarModel: ObservableObject {
 
     var selectedMicName: String {
         guard let mic = microphones.first(where: { $0.id == selectedMicID }) else {
-            return "Microphone"
+            return L10n.tr("options.microphone")
         }
-        return mic.isDefault ? "\(mic.name) (Default)" : mic.name
+        return mic.isDefault ? L10n.tr("options.micDefault", mic.name) : mic.name
     }
 
     var selectedSourceName: String {
         sources.first(where: { $0.id == selectedSourceID })?.name
-            ?? (mode == .area ? "No area" : "No source")
+            ?? (mode == .area ? L10n.tr("options.noArea") : L10n.tr("options.noSource"))
     }
 
     func prepare(mode: RecordingKind) {
@@ -146,7 +146,7 @@ final class OptionsBarModel: ObservableObject {
             let source = CaptureSource(
                 id: "display:\(area.displayID)",
                 kind: .area,
-                name: "Area \(area.pixelWidth)×\(area.pixelHeight)",
+                name: L10n.tr("options.areaSize", area.pixelWidth, area.pixelHeight),
                 width: area.pixelWidth,
                 height: area.pixelHeight
             )
@@ -160,7 +160,7 @@ final class OptionsBarModel: ObservableObject {
         } else {
             sources = []
             selectedSourceID = ""
-            bannerMessage = "Drag to select an area."
+            bannerMessage = L10n.tr("options.dragArea")
         }
         onContentSizeMayChange?()
     }
@@ -228,14 +228,14 @@ final class OptionsBarModel: ObservableObject {
             permissionState = .needsGrant
             sources = []
             selectedSourceID = ""
-            bannerMessage = "No area selected. Pick Record Area again."
+            bannerMessage = L10n.tr("options.noAreaSelected")
             return
         }
 
         let source = CaptureSource(
             id: "display:\(area.displayID)",
             kind: .area,
-            name: "Area \(area.pixelWidth)×\(area.pixelHeight)",
+            name: L10n.tr("options.areaSize", area.pixelWidth, area.pixelHeight),
             width: area.pixelWidth,
             height: area.pixelHeight
         )
@@ -250,7 +250,7 @@ final class OptionsBarModel: ObservableObject {
             permissionState = .needsGrant
             sources = []
             selectedSourceID = ""
-            bannerMessage = "No window selected. Pick Record Window again."
+            bannerMessage = L10n.tr("options.noWindowSelected")
             return
         }
 
@@ -312,8 +312,8 @@ final class OptionsBarModel: ObservableObject {
         guard !isBusy else { return }
         guard let source = sources.first(where: { $0.id == selectedSourceID }) else {
             bannerMessage = permissionState == .needsGrant
-                ? "Grant Screen Recording access first."
-                : "Pick a capture source."
+                ? L10n.tr("options.grantScreenFirst")
+                : L10n.tr("options.pickSource")
             return
         }
         isBusy = true
@@ -322,7 +322,7 @@ final class OptionsBarModel: ObservableObject {
                 let ok = await CapturePermissions.requestMicrophoneAccess()
                 if !ok {
                     isBusy = false
-                    bannerMessage = "Microphone permission is required. Enable it in System Settings."
+                    bannerMessage = L10n.tr("options.micPermission")
                     CapturePermissions.openMicrophoneSettings()
                     return
                 }

@@ -14,17 +14,17 @@ enum ExportError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .noVideo:
-            return "This recording has no video track."
+            return L10n.tr("export.noVideo")
         case .cannotAddInput:
-            return "Could not prepare the export."
+            return L10n.tr("export.cannotPrepare")
         case .readerFailed:
-            return "Could not read the recording."
+            return L10n.tr("export.cannotRead")
         case .writerFailed(let message):
             return message
         case .cancelled:
-            return "Export cancelled."
+            return L10n.tr("export.cancelled")
         case .rangeTooShort:
-            return "The trimmed range is too short to export."
+            return L10n.tr("export.rangeTooShort")
         }
     }
 }
@@ -339,7 +339,7 @@ enum ExportService {
         if writer.status != .completed {
             try? FileManager.default.removeItem(at: destination)
             throw writer.error.map { ExportError.writerFailed($0.localizedDescription) }
-                ?? .writerFailed("Export failed.")
+                ?? .writerFailed(L10n.tr("export.failed"))
         }
         progress?(1)
     }
@@ -374,20 +374,20 @@ enum ExportService {
                 guard let shifted = shiftedSample(sample, offset: offset) else {
                     finished = true
                     input.markAsFinished()
-                    onFailure(ExportError.writerFailed("Could not adjust sample timing."))
+                    onFailure(ExportError.writerFailed(L10n.tr("export.adjustTiming")))
                     return
                 }
                 guard let mapped = mapSample(shifted) else {
                     finished = true
                     input.markAsFinished()
-                    onFailure(ExportError.writerFailed("Could not process audio."))
+                    onFailure(ExportError.writerFailed(L10n.tr("export.processAudio")))
                     return
                 }
                 onSample(mapped)
                 if !input.append(mapped) {
                     finished = true
                     input.markAsFinished()
-                    onFailure(ExportError.writerFailed("Could not write media data."))
+                    onFailure(ExportError.writerFailed(L10n.tr("export.writeMedia")))
                     return
                 }
             }
@@ -427,7 +427,7 @@ enum ExportService {
                 guard let shifted = shiftedSample(sample, offset: offset) else {
                     finished = true
                     input.markAsFinished()
-                    onFailure(ExportError.writerFailed("Could not adjust sample timing."))
+                    onFailure(ExportError.writerFailed(L10n.tr("export.adjustTiming")))
                     return
                 }
                 let pts = CMSampleBufferGetPresentationTimeStamp(shifted)
@@ -438,19 +438,19 @@ enum ExportService {
                 guard let image = CMSampleBufferGetImageBuffer(shifted) else {
                     finished = true
                     input.markAsFinished()
-                    onFailure(ExportError.writerFailed("Could not read video frame."))
+                    onFailure(ExportError.writerFailed(L10n.tr("export.readFrame")))
                     return
                 }
                 guard let scaled = scaler.scale(image) else {
                     finished = true
                     input.markAsFinished()
-                    onFailure(ExportError.writerFailed("Could not scale video frame."))
+                    onFailure(ExportError.writerFailed(L10n.tr("export.scaleFrame")))
                     return
                 }
                 if !adaptor.append(scaled, withPresentationTime: pts) {
                     finished = true
                     input.markAsFinished()
-                    onFailure(ExportError.writerFailed("Could not write media data."))
+                    onFailure(ExportError.writerFailed(L10n.tr("export.writeMedia")))
                     return
                 }
                 if let minFrameInterval {

@@ -6,26 +6,46 @@ struct SettingsView: View {
         TabView {
             GeneralSettingsPane()
                 .tabItem {
-                    Label("General", systemImage: "gearshape")
+                    Label(L10n.tr("settings.general"), systemImage: "gearshape")
                 }
 
             AboutView()
                 .tabItem {
-                    Label("About", systemImage: "info.circle")
+                    Label(L10n.tr("settings.about"), systemImage: "info.circle")
                 }
         }
-        .frame(width: 560, height: 400)
+        .frame(width: 560, height: 440)
     }
 }
 
 private struct GeneralSettingsPane: View {
     @ObservedObject private var prefs = AppPreferences.shared
+    @State private var selectedLanguage = AppLanguage.preference
 
     private let labelWidth: CGFloat = 120
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            settingsRow(label: "Save folder:") {
+            settingsRow(label: L10n.tr("settings.language") + ":") {
+                VStack(alignment: .leading, spacing: 4) {
+                    Picker("", selection: $selectedLanguage) {
+                        ForEach(AppLanguagePreference.allCases) { preference in
+                            Text(preference.menuTitle).tag(preference)
+                        }
+                    }
+                    .labelsHidden()
+                    .frame(width: 200, alignment: .leading)
+                    .onChange(of: selectedLanguage) { _, newValue in
+                        AppLanguage.setPreferenceAndRelaunch(newValue)
+                    }
+
+                    Text(L10n.tr("settings.language.hint"))
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            settingsRow(label: L10n.tr("settings.saveFolder")) {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 8) {
                         Image(systemName: "folder.fill")
@@ -35,11 +55,11 @@ private struct GeneralSettingsPane: View {
                             .truncationMode(.middle)
                         Spacer(minLength: 0)
                         Menu {
-                            Button("Choose…") { prefs.chooseLibraryFolder() }
-                            Button("Reveal in Finder") { prefs.revealLibraryFolder() }
+                            Button(L10n.tr("common.chooseEllipsis")) { prefs.chooseLibraryFolder() }
+                            Button(L10n.tr("common.revealInFinder")) { prefs.revealLibraryFolder() }
                             if !prefs.libraryFolderPath.isEmpty {
                                 Divider()
-                                Button("Reset to Default") { prefs.resetLibraryFolder() }
+                                Button(L10n.tr("settings.resetDefault")) { prefs.resetLibraryFolder() }
                             }
                         } label: {
                             Image(systemName: "chevron.up.chevron.down")
@@ -59,7 +79,7 @@ private struct GeneralSettingsPane: View {
                                 .foregroundStyle(.yellow, .orange)
                         }
                         .buttonStyle(.plain)
-                        .help("Open save folder")
+                        .help(L10n.tr("settings.openSaveFolder"))
                     }
                     .padding(.horizontal, 8)
                     .padding(.vertical, 5)
@@ -72,51 +92,51 @@ private struct GeneralSettingsPane: View {
                             .stroke(Color(nsColor: .separatorColor), lineWidth: 1)
                     )
 
-                    Text("Recordings are saved here by default.")
+                    Text(L10n.tr("settings.saveFolderHint"))
                         .font(.system(size: 11))
                         .foregroundStyle(.secondary)
                 }
             }
 
-            settingsRow(label: "When recording:") {
-                Toggle("Show recording time", isOn: $prefs.displayRecordingTime)
+            settingsRow(label: L10n.tr("settings.whenRecording")) {
+                Toggle(L10n.tr("settings.showRecordingTime"), isOn: $prefs.displayRecordingTime)
                     .toggleStyle(.checkbox)
             }
 
-            settingsRow(label: "After recording:") {
-                Toggle("Open Files List", isOn: $prefs.openFilesListAfterRecording)
+            settingsRow(label: L10n.tr("settings.afterRecording")) {
+                Toggle(L10n.tr("settings.openFilesList"), isOn: $prefs.openFilesListAfterRecording)
                     .toggleStyle(.checkbox)
             }
 
-            settingsRow(label: "After editing:") {
+            settingsRow(label: L10n.tr("settings.afterEditing")) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Toggle("Open Files List", isOn: $prefs.openFilesListAfterEditing)
+                    Toggle(L10n.tr("settings.openFilesList"), isOn: $prefs.openFilesListAfterEditing)
                         .toggleStyle(.checkbox)
-                    Toggle("Reveal in Finder", isOn: $prefs.openFolderAfterEditing)
+                    Toggle(L10n.tr("common.revealInFinder"), isOn: $prefs.openFolderAfterEditing)
                         .toggleStyle(.checkbox)
-                    Toggle("Delete original video", isOn: $prefs.deleteOriginalAfterEditing)
+                    Toggle(L10n.tr("settings.deleteOriginal"), isOn: $prefs.deleteOriginalAfterEditing)
                         .toggleStyle(.checkbox)
                 }
             }
 
-            settingsRow(label: "Dock icon:") {
-                Toggle("Hide", isOn: $prefs.hideDockIcon)
+            settingsRow(label: L10n.tr("settings.dockIcon")) {
+                Toggle(L10n.tr("common.hide"), isOn: $prefs.hideDockIcon)
                     .toggleStyle(.checkbox)
             }
 
-            settingsRow(label: "Capture defaults:") {
+            settingsRow(label: L10n.tr("settings.captureDefaults")) {
                 HStack(spacing: 10) {
-                    compactPicker("Resolution", selection: $prefs.defaultResolution) {
+                    compactPicker(L10n.tr("settings.resolution"), selection: $prefs.defaultResolution) {
                         ForEach(CaptureResolution.allCases) { pick in
                             Text(pick.label).tag(pick)
                         }
                     }
-                    compactPicker("Frame rate", selection: $prefs.defaultFrameRate) {
+                    compactPicker(L10n.tr("settings.frameRate"), selection: $prefs.defaultFrameRate) {
                         ForEach(CaptureFrameRate.allCases) { pick in
                             Text(pick.label).tag(pick)
                         }
                     }
-                    compactPicker("Countdown", selection: $prefs.defaultCountdown) {
+                    compactPicker(L10n.tr("settings.countdown"), selection: $prefs.defaultCountdown) {
                         ForEach(CaptureCountdown.allCases) { pick in
                             Text(pick.label).tag(pick)
                         }
@@ -125,19 +145,19 @@ private struct GeneralSettingsPane: View {
                 }
             }
 
-            settingsRow(label: "Edit defaults:") {
+            settingsRow(label: L10n.tr("settings.editDefaults")) {
                 HStack(spacing: 10) {
-                    compactPicker("Preview", selection: $prefs.editPreviewSeconds) {
+                    compactPicker(L10n.tr("settings.preview"), selection: $prefs.editPreviewSeconds) {
                         Text("15s").tag(15)
                         Text("30s").tag(30)
                         Text("60s").tag(60)
                     }
-                    compactPicker("Quality", selection: $prefs.defaultExportQuality) {
+                    compactPicker(L10n.tr("settings.quality"), selection: $prefs.defaultExportQuality) {
                         ForEach(ExportSettings.Quality.allCases) { pick in
                             Text(pick.title).tag(pick)
                         }
                     }
-                    compactPicker("Audio", selection: $prefs.defaultExportAudioChannels) {
+                    compactPicker(L10n.tr("settings.audio"), selection: $prefs.defaultExportAudioChannels) {
                         ForEach(ExportSettings.AudioChannels.allCases) { pick in
                             Text(pick.title).tag(pick)
                         }
@@ -152,6 +172,9 @@ private struct GeneralSettingsPane: View {
         .padding(.vertical, 22)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(Color(nsColor: .windowBackgroundColor))
+        .onAppear {
+            selectedLanguage = AppLanguage.preference
+        }
     }
 
     private func settingsRow<Content: View>(label: String, @ViewBuilder content: () -> Content) -> some View {

@@ -155,7 +155,7 @@ final class AppState: ObservableObject {
             onComplete: { [weak self] result in
                 guard let self else { return }
                 guard let preset = AreaSelectionResult.presetFromWindowFrame(result.hit.frame) else {
-                    self.lastErrorMessage = "Could not use that window as an area."
+                    self.lastErrorMessage = L10n.tr("error.windowAsArea")
                     self.phase = .idle
                     return
                 }
@@ -330,7 +330,7 @@ final class AppState: ObservableObject {
         } catch {
             returnToIdle()
             lastErrorMessage = error.localizedDescription
-            presentAlert(title: "Recording failed", message: error.localizedDescription)
+            presentAlert(title: L10n.tr("error.recordingFailed"), message: error.localizedDescription)
         }
     }
 

@@ -17,7 +17,7 @@ struct OptionsBarLeftColumn: View {
                 menuItems: model.microphones.map { mic in
                     OptionsMenuItem(
                         id: mic.id,
-                        title: mic.isDefault ? "\(mic.name) (Default)" : mic.name,
+                        title: mic.isDefault ? L10n.tr("options.micDefault", mic.name) : mic.name,
                         isSelected: mic.id == model.selectedMicID
                     )
                 },
@@ -31,7 +31,7 @@ struct OptionsBarLeftColumn: View {
 
             OptionsFeatureRow(
                 icon: "camera",
-                title: "PiP Camera",
+                title: L10n.tr("options.pipCamera"),
                 showsMenu: true,
                 isOn: $model.pipCamera,
                 enabled: false
@@ -39,28 +39,28 @@ struct OptionsBarLeftColumn: View {
 
             OptionsFeatureRow(
                 icon: "speaker.wave.2",
-                title: "System Sound",
+                title: L10n.tr("options.systemSound"),
                 isOn: $model.systemAudio,
                 enabled: true
             )
 
             OptionsFeatureRow(
                 icon: "cursorarrow.rays",
-                title: "Capture Mouse Cursor",
+                title: L10n.tr("options.captureCursor"),
                 isOn: $model.showCursor,
                 enabled: true
             )
 
             OptionsFeatureRow(
                 icon: "plus.magnifyingglass",
-                title: "Click Zoom",
+                title: L10n.tr("options.clickZoom"),
                 isOn: $model.clickZoom,
                 enabled: false
             )
 
             OptionsFeatureRow(
                 icon: "keyboard",
-                title: "Catch Keyboard Event",
+                title: L10n.tr("options.catchKeyboard"),
                 showsGear: true,
                 isOn: $model.catchKeyboard,
                 enabled: false
@@ -74,7 +74,7 @@ struct OptionsBarLeftColumn: View {
         if model.isLoading {
             OptionsFeatureRow(
                 icon: sourceIconName,
-                title: "Loading…",
+                title: L10n.tr("common.loading"),
                 showsMenu: false,
                 isOn: .constant(false),
                 enabled: false
@@ -116,7 +116,7 @@ struct OptionsBarMiddleColumn: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             OptionsParamRow(icon: "rectangle.dashed") {
-                Text("Size")
+                Text(L10n.tr("options.size"))
                     .foregroundStyle(.white.opacity(0.9))
                     .lineLimit(1)
                     .fixedSize(horizontal: true, vertical: false)
@@ -130,7 +130,7 @@ struct OptionsBarMiddleColumn: View {
             }
 
             OptionsParamRow(icon: "film") {
-                Text("Frame Rate")
+                Text(L10n.tr("options.frameRate"))
                     .foregroundStyle(.white.opacity(0.9))
                     .lineLimit(1)
                     .fixedSize(horizontal: true, vertical: false)
@@ -143,7 +143,7 @@ struct OptionsBarMiddleColumn: View {
             }
 
             OptionsParamRow(icon: "rectangle.ratio.16.to.9") {
-                Text("Resolution")
+                Text(L10n.tr("options.resolution"))
                     .foregroundStyle(.white.opacity(0.9))
                     .lineLimit(1)
                     .fixedSize(horizontal: true, vertical: false)
@@ -156,7 +156,7 @@ struct OptionsBarMiddleColumn: View {
             }
 
             OptionsParamRow(icon: "clock") {
-                Text("Timing Recording")
+                Text(L10n.tr("options.timingRecording"))
                     .foregroundStyle(.white.opacity(0.45))
                     .lineLimit(1)
                     .minimumScaleFactor(0.85)
@@ -167,7 +167,7 @@ struct OptionsBarMiddleColumn: View {
             }
 
             OptionsParamRow(icon: "timer") {
-                Text("Count Down")
+                Text(L10n.tr("options.countDown"))
                     .foregroundStyle(.white.opacity(0.9))
                     .lineLimit(1)
                     .fixedSize(horizontal: true, vertical: false)
@@ -205,7 +205,7 @@ struct OptionsBarRightColumn: View {
             }
             .buttonStyle(.plain)
             .disabled(!canRecord)
-            .help("Start recording")
+            .help(L10n.tr("options.startRecording"))
             Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -224,12 +224,12 @@ struct OptionsBarPermissionFooter: View {
                 .lineLimit(2)
             Spacer(minLength: 8)
             if model.permissionState == .needsGrant {
-                Button("Grant access") { model.grantAccess() }
+                Button(L10n.tr("common.grantAccess")) { model.grantAccess() }
                     .controlSize(.small)
-                Button("Open Settings") { CapturePermissions.openScreenCaptureSettings() }
+                Button(L10n.tr("common.openSettings")) { CapturePermissions.openScreenCaptureSettings() }
                     .controlSize(.small)
             } else if model.permissionState == .needsRelaunch {
-                Button("Relaunch") { model.relaunch() }
+                Button(L10n.tr("common.relaunch")) { model.relaunch() }
                     .controlSize(.small)
             }
         }

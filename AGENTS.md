@@ -6,7 +6,7 @@ macOS **15+** menu-bar screen recorder (OMI-like). **SwiftUI + AppKit**.
 
 Product requirements: [`docs/product.md`](docs/product.md).
 
-**Status (2026-08-15):** MVP + Area + Window hover-pick + solid options bar (FPS / Resolution / Countdown) + in-app Edit/trim/export on `main`. In-recording chrome (dashed frame + mini bar) now covers **Area and Window**. Double-tap Stop/Record re-entry crash fixed (`AppPhase.starting` / `.stopping`) — **reproduced on the pre-fix build and verified gone**. First test target landed: **`EggplantRecorderTests`, 156 tests** (audit #2). Remaining known issues: [`docs/code-audit.md`](docs/code-audit.md).
+**Status (2026-08-15):** MVP + Area + Window hover-pick + solid options bar (FPS / Resolution / Countdown) + in-app Edit/trim/export on `main`. In-recording chrome (dashed frame + mini bar) now covers **Area and Window**. Double-tap Stop/Record re-entry crash fixed (`AppPhase.starting` / `.stopping`) — **reproduced on the pre-fix build and verified gone**. First test target landed: **`EggplantRecorderTests`, 156 tests** (audit #2). **en + zh-Hans** String Catalog (`Localizable.xcstrings` / `InfoPlist.xcstrings`) + Preferences / tray Language picker (relaunch). Remaining known issues: [`docs/code-audit.md`](docs/code-audit.md).
 
 ## Identity
 
@@ -56,7 +56,8 @@ Audit backlog with verified `file:line` detail: [`docs/code-audit.md`](docs/code
 - **Recording controls:** menu-bar Pause / Stop / `HH:MM:SS`; Area **and Window** also get the compact solid mini bar (Restart / Discard; Annotate stub).
 - **Stop →** library MP4 → Files List (820pt), Quick Look + Play + Edit, OMI context menu.
 - **Edit:** Files List right-click / Operation → preview + trim handles + Export → `Name-Edit.mp4` (dual audio preserved).
-- **Preferences…** (⌘,): General (save folder, recording timer, after-record/edit actions, Dock hide, capture + export defaults) + About (Fred/Shot-style).
+- **Preferences…** (⌘,): General (save folder, recording timer, after-record/edit actions, Dock hide, capture + export defaults, **App language**) + About (Fred/Shot-style).
+- **Localization:** `Localizable.xcstrings` + `InfoPlist.xcstrings` (`en` / `zh-Hans`). Tray Language submenu and Preferences picker write `AppleLanguages` and relaunch (TinyPNG/Shot pattern). Filename prefixes (`Screen-` / `Area-` / `Window-`) stay English.
 - **Launch:** tray only on cold start.
 - **Mic:** entitlement `com.apple.security.device.audio-input` under Hardened Runtime.
 
@@ -66,6 +67,9 @@ Audit backlog with verified `file:line` detail: [`docs/code-audit.md`](docs/code
 EggplantRecorder/
   EggplantRecorderApp.swift
   AppState.swift                    # coordinator: phase + pendingArea / pendingWindow
+  L10n/AppLanguage.swift            # AppleLanguages preference + L10n.tr
+  Localizable.xcstrings             # en + zh-Hans UI strings
+  InfoPlist.xcstrings               # usage / copyright localizations
   Models/
     RecordingKind.swift
     RecordingConfig.swift           # + CaptureFrameRate / Resolution / Countdown

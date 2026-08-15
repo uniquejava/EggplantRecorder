@@ -159,11 +159,11 @@ final class ExportSettingsTests: XCTestCase {
         let settings = ExportSettings()
         XCTAssertEqual(
             settings.estimatedSizeText(trimDuration: 5, fullDuration: 10, source: nil),
-            "About —"
+            L10n.tr("export.aboutUnknown")
         )
         XCTAssertEqual(
             settings.estimatedSizeText(trimDuration: 0, fullDuration: 10, source: source()),
-            "About —"
+            L10n.tr("export.aboutUnknown")
         )
     }
 
@@ -211,8 +211,8 @@ final class ExportSettingsTests: XCTestCase {
 
     func testTitlesFallBackWithoutASource() {
         let settings = ExportSettings()
-        XCTAssertEqual(settings.frameRateTitle(source: nil), "Original")
-        XCTAssertEqual(settings.resolutionTitle(source: nil), "Original")
+        XCTAssertEqual(settings.frameRateTitle(source: nil), L10n.tr("export.original"))
+        XCTAssertEqual(settings.resolutionTitle(source: nil), L10n.tr("export.original"))
     }
 
     func testTitlesIncludeTheSourceDetailWhenKnown() {

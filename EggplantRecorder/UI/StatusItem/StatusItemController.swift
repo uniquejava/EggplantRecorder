@@ -96,27 +96,52 @@ final class StatusItemController: NSObject {
 
     private func makeIdleMenu() -> NSMenu {
         let menu = NSMenu()
-        menu.addItem(withTitle: "Record Screen", action: #selector(recordScreen), keyEquivalent: "")
-        menu.addItem(withTitle: "Record Area", action: #selector(recordArea), keyEquivalent: "")
-        menu.addItem(withTitle: "Record Window Area", action: #selector(recordWindowArea), keyEquivalent: "")
+        menu.addItem(withTitle: L10n.tr("menu.recordScreen"), action: #selector(recordScreen), keyEquivalent: "")
+        menu.addItem(withTitle: L10n.tr("menu.recordArea"), action: #selector(recordArea), keyEquivalent: "")
+        menu.addItem(withTitle: L10n.tr("menu.recordWindowArea"), action: #selector(recordWindowArea), keyEquivalent: "")
         menu.addItem(.separator())
-        menu.addItem(withTitle: "Record Window", action: #selector(recordWindow), keyEquivalent: "")
+        menu.addItem(withTitle: L10n.tr("menu.recordWindow"), action: #selector(recordWindow), keyEquivalent: "")
         menu.addItem(.separator())
-        menu.addItem(withTitle: "Show Files List", action: #selector(showFiles), keyEquivalent: "")
+        menu.addItem(withTitle: L10n.tr("menu.showFilesList"), action: #selector(showFiles), keyEquivalent: "")
+        menu.addItem(.separator())
+
+        let languageMenu = NSMenu()
+        for preference in AppLanguagePreference.allCases {
+            let item = NSMenuItem(
+                title: preference.menuTitle,
+                action: #selector(selectLanguage(_:)),
+                keyEquivalent: ""
+            )
+            item.representedObject = preference.rawValue
+            item.state = preference == AppLanguage.preference ? .on : .off
+            item.target = self
+            languageMenu.addItem(item)
+        }
+        let languageItem = NSMenuItem(title: L10n.tr("menu.language"), action: nil, keyEquivalent: "")
+        languageItem.submenu = languageMenu
+        menu.addItem(languageItem)
+
         menu.addItem(.separator())
         let prefs = NSMenuItem(
-            title: "Preferences...",
+            title: L10n.tr("menu.preferences"),
             action: #selector(openPreferences),
             keyEquivalent: ","
         )
         prefs.keyEquivalentModifierMask = [.command]
         menu.addItem(prefs)
         menu.addItem(.separator())
-        menu.addItem(withTitle: "Quit EggplantRecorder", action: #selector(quit), keyEquivalent: "q")
+        menu.addItem(withTitle: L10n.tr("menu.quit"), action: #selector(quit), keyEquivalent: "q")
         for item in menu.items where item.action != nil {
             item.target = self
         }
         return menu
+    }
+
+    @objc private func selectLanguage(_ sender: NSMenuItem) {
+        guard let raw = sender.representedObject as? String,
+              let preference = AppLanguagePreference(rawValue: raw)
+        else { return }
+        AppLanguage.setPreferenceAndRelaunch(preference)
     }
 
     @objc private func recordScreen() {

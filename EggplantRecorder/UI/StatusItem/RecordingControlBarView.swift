@@ -26,13 +26,13 @@ final class RecordingControlBarView: NSView {
         pauseButton.imagePosition = .imageOnly
         pauseButton.target = self
         pauseButton.action = #selector(togglePause)
-        pauseButton.toolTip = "Pause / Resume"
+        pauseButton.toolTip = L10n.tr("common.pauseResume")
 
         stopButton.isBordered = false
         stopButton.imagePosition = .imageOnly
         stopButton.target = self
         stopButton.action = #selector(stop)
-        stopButton.toolTip = "Stop"
+        stopButton.toolTip = L10n.tr("common.stop")
 
         timerLabel.font = NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .medium)
         timerLabel.textColor = .labelColor
@@ -75,7 +75,7 @@ final class RecordingControlBarView: NSView {
         let pauseSymbol = paused ? "play.fill" : "pause.fill"
         pauseButton.image = NSImage(
             systemSymbolName: pauseSymbol,
-            accessibilityDescription: paused ? "Resume" : "Pause"
+            accessibilityDescription: paused ? L10n.tr("common.resume") : L10n.tr("common.pause")
         )
         pauseButton.contentTintColor = .labelColor
 

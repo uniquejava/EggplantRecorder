@@ -129,8 +129,8 @@ final class AppPreferences: ObservableObject {
         panel.canChooseDirectories = true
         panel.allowsMultipleSelection = false
         panel.canCreateDirectories = true
-        panel.prompt = "Choose"
-        panel.message = "Choose where recorded files are saved by default."
+        panel.prompt = L10n.tr("common.choose")
+        panel.message = L10n.tr("settings.chooseFolderMessage")
         panel.directoryURL = libraryDirectoryURL
         guard panel.runModal() == .OK, let url = panel.url else { return }
         libraryFolderPath = url.path

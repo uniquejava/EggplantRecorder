@@ -38,7 +38,7 @@ final class FilesListController {
             backing: .buffered,
             defer: false
         )
-        window.title = "Files List"
+        window.title = L10n.tr("files.title")
         window.contentViewController = hosting
         window.setContentSize(NSSize(width: 820, height: 480))
         window.contentMinSize = NSSize(width: 820, height: 320)

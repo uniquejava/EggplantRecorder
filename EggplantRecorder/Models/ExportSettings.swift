@@ -62,9 +62,9 @@ struct ExportSettings: Equatable, Sendable {
 
         var title: String {
             switch self {
-            case .high: "High"
-            case .medium: "Medium"
-            case .low: "Low"
+            case .high: L10n.tr("export.quality.high")
+            case .medium: L10n.tr("export.quality.medium")
+            case .low: L10n.tr("export.quality.low")
             }
         }
 
@@ -85,8 +85,8 @@ struct ExportSettings: Equatable, Sendable {
 
         var title: String {
             switch self {
-            case .stereo: "Stereo"
-            case .mono: "Mono"
+            case .stereo: L10n.tr("export.audio.stereo")
+            case .mono: L10n.tr("export.audio.mono")
             }
         }
 
@@ -112,9 +112,9 @@ struct ExportSettings: Equatable, Sendable {
         switch frameRate {
         case .original:
             if let source {
-                return "Original (\(source.frameRateLabel))"
+                return L10n.tr("export.originalFrameRate", source.frameRateLabel)
             }
-            return "Original"
+            return L10n.tr("export.original")
         case .fps30: return "30 FPS"
         case .fps24: return "24 FPS"
         case .fps15: return "15 FPS"
@@ -125,9 +125,9 @@ struct ExportSettings: Equatable, Sendable {
         switch resolution {
         case .original:
             if let source {
-                return "Original (\(source.sizeLabel))"
+                return L10n.tr("export.originalResolution", source.sizeLabel)
             }
-            return "Original"
+            return L10n.tr("export.original")
         case .p1080: return "1080p"
         case .p720: return "720p"
         }
@@ -199,14 +199,14 @@ struct ExportSettings: Equatable, Sendable {
         fullDuration: TimeInterval,
         source: RecordingMediaInfo?
     ) -> String {
-        guard let source, trimDuration > 0 else { return "About —" }
+        guard let source, trimDuration > 0 else { return L10n.tr("export.aboutUnknown") }
         let bytes = estimatedBytes(
             trimDuration: trimDuration,
             fullDuration: fullDuration,
             source: source
         )
         let value = ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file)
-        return "About \(value)"
+        return L10n.tr("export.about", value)
     }
 
     private func even(_ width: Int, _ height: Int) -> (Int, Int) {

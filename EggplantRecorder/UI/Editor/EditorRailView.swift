@@ -5,14 +5,14 @@ struct EditorRailView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Export")
+            Text(L10n.tr("common.export"))
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(EditorChrome.muted)
                 .tracking(0.6)
                 .textCase(.uppercase)
 
             field(
-                "Frame Rate",
+                L10n.tr("editor.frameRate"),
                 title: model.settings.frameRateTitle(source: model.sourceInfo),
                 items: frameRateItems,
                 enabled: canEdit
@@ -23,7 +23,7 @@ struct EditorRailView: View {
             }
 
             field(
-                "Resolution",
+                L10n.tr("editor.resolution"),
                 title: model.settings.resolutionTitle(source: model.sourceInfo),
                 items: resolutionItems,
                 enabled: canEdit
@@ -34,7 +34,7 @@ struct EditorRailView: View {
             }
 
             field(
-                "Quality",
+                L10n.tr("editor.quality"),
                 title: model.settings.quality.title,
                 items: qualityItems,
                 enabled: canEdit
@@ -45,7 +45,7 @@ struct EditorRailView: View {
             }
 
             VStack(alignment: .leading, spacing: 8) {
-                Text("Audio")
+                Text(L10n.tr("editor.audio"))
                     .font(.system(size: 11.5, weight: .medium))
                     .foregroundStyle(EditorChrome.label)
                 HStack(spacing: 10) {
@@ -55,9 +55,9 @@ struct EditorRailView: View {
                         .foregroundStyle(EditorChrome.text)
                         .frame(minWidth: 36, alignment: .trailing)
                 }
-                Picker("Channels", selection: $model.settings.audioChannels) {
-                    Text("Stereo").tag(ExportSettings.AudioChannels.stereo)
-                    Text("Mono").tag(ExportSettings.AudioChannels.mono)
+                Picker(L10n.tr("editor.channels"), selection: $model.settings.audioChannels) {
+                    Text(L10n.tr("export.audio.stereo")).tag(ExportSettings.AudioChannels.stereo)
+                    Text(L10n.tr("export.audio.mono")).tag(ExportSettings.AudioChannels.mono)
                 }
                 .pickerStyle(.segmented)
                 .labelsHidden()
@@ -73,7 +73,7 @@ struct EditorRailView: View {
             Button {
                 model.exportPreview()
             } label: {
-                Text("Preview 30s")
+                Text(L10n.tr("export.previewSeconds", AppPreferences.shared.editPreviewSeconds))
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(EditorChrome.text)
                     .frame(maxWidth: .infinity)
@@ -91,7 +91,7 @@ struct EditorRailView: View {
                 model.export()
             } label: {
                 ZStack {
-                    Text(model.isExporting ? "Exporting…" : "Export")
+                    Text(model.isExporting ? L10n.tr("export.exporting") : L10n.tr("common.export"))
                         .opacity(model.isExporting ? 0 : 1)
                     if model.isExporting {
                         ProgressView(value: model.exportProgress)

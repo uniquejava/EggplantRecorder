@@ -43,7 +43,7 @@ final class WindowHitTests: XCTestCase {
     }
 
     func testDisplayNameFallsBackToAGenericLabelWhenNothingIsKnown() {
-        XCTAssertEqual(hit(title: "", ownerName: "").displayName, "Window")
+        XCTAssertEqual(hit(title: "", ownerName: "").displayName, L10n.tr("window.fallback"))
     }
 
     func testDisplayNameIsNeverEmpty() {

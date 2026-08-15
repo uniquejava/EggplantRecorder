@@ -21,7 +21,7 @@ enum CaptureResolution: String, CaseIterable, Identifiable, Sendable {
 
     var label: String {
         switch self {
-        case .native: "Native"
+        case .native: L10n.tr("capture.native")
         case .p1080: "1080p"
         case .p720: "720p"
         }
@@ -69,7 +69,7 @@ enum CaptureCountdown: Int, CaseIterable, Identifiable, Sendable {
     var id: Int { rawValue }
 
     var label: String {
-        self == .none ? "none" : "\(rawValue)s"
+        self == .none ? L10n.tr("countdown.none") : "\(rawValue)s"
     }
 }
 

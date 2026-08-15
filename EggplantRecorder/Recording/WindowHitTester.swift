@@ -13,7 +13,7 @@ struct WindowHit: Equatable {
         if !title.isEmpty {
             return "\(ownerName) — \(title)"
         }
-        return ownerName.isEmpty ? "Window" : ownerName
+        return ownerName.isEmpty ? L10n.tr("window.fallback") : ownerName
     }
 
     var sourceID: String { "window:\(windowID)" }

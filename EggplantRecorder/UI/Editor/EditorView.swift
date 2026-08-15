@@ -32,8 +32,8 @@ struct EditorView: View {
             model.skip(press.key == .leftArrow ? -step : step)
             return .handled
         }
-        .alert("Could not export", isPresented: alertPresented) {
-            Button("OK", role: .cancel) { model.alertMessage = nil }
+        .alert(L10n.tr("export.couldNotExport"), isPresented: alertPresented) {
+            Button(L10n.tr("common.ok"), role: .cancel) { model.alertMessage = nil }
         } message: {
             Text(model.alertMessage ?? "")
         }
@@ -51,7 +51,7 @@ struct EditorView: View {
             Color.black
             if model.loadFailed {
                 ContentUnavailableView(
-                    "Could not open recording",
+                    L10n.tr("files.couldNotOpen"),
                     systemImage: "exclamationmark.triangle",
                     description: Text(model.name)
                 )
@@ -61,7 +61,7 @@ struct EditorView: View {
                 VStack {
                     HStack {
                         Spacer()
-                        Button("Close preview") {
+                        Button(L10n.tr("editor.closePreview")) {
                             model.closePreview()
                         }
                         .buttonStyle(.plain)
@@ -84,7 +84,7 @@ struct EditorView: View {
                     ProgressView()
                         .controlSize(.large)
                         .tint(.white)
-                    Text(model.isPreviewExport ? "Rendering preview…" : "Exporting…")
+                    Text(model.isPreviewExport ? L10n.tr("export.renderingPreview") : L10n.tr("export.exporting"))
                         .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(.white.opacity(0.9))
                 }
@@ -107,7 +107,7 @@ struct EditorView: View {
                 }
                 .buttonStyle(.plain)
                 .disabled(model.duration <= 0 || model.isExporting || model.previewPlayer != nil)
-                .help(model.isPlaying ? "Pause" : "Play")
+                .help(model.isPlaying ? L10n.tr("common.pause") : L10n.tr("common.play"))
 
                 Text("\(MediaProbe.formatClock(model.currentTime))  /  \(MediaProbe.formatClock(model.trimDuration))")
                     .font(.system(size: 13).monospacedDigit())
@@ -115,15 +115,15 @@ struct EditorView: View {
 
                 Spacer()
 
-                Text("In \(MediaProbe.formatClock(model.trimStart))")
+                Text(L10n.tr("editor.in", MediaProbe.formatClock(model.trimStart)))
                     .font(.system(size: 12).monospacedDigit())
                     .foregroundStyle(EditorChrome.label)
-                Text("Out \(MediaProbe.formatClock(model.trimEnd))")
+                Text(L10n.tr("editor.out", MediaProbe.formatClock(model.trimEnd)))
                     .font(.system(size: 12).monospacedDigit())
                     .foregroundStyle(EditorChrome.label)
 
                 if model.isTrimmed {
-                    Button("Reset") { model.resetTrim() }
+                    Button(L10n.tr("common.reset")) { model.resetTrim() }
                         .buttonStyle(.plain)
                         .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(EditorChrome.export)

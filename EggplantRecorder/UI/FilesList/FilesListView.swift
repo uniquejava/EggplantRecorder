@@ -37,9 +37,9 @@ struct FilesListView: View {
             Divider()
             if appState.recordings.isEmpty {
                 ContentUnavailableView(
-                    "No recordings yet",
+                    L10n.tr("files.emptyTitle"),
                     systemImage: "film",
-                    description: Text("Stop a recording to see it here. Library: ~/Movies/EggplantRecorder")
+                    description: Text(L10n.tr("files.emptyDescription"))
                 )
             } else {
                 table
@@ -80,10 +80,10 @@ struct FilesListView: View {
 
     private var header: some View {
         HStack {
-            Text("Files List")
+            Text(L10n.tr("files.title"))
                 .font(.headline)
             Spacer()
-            Button("Show in Finder") {
+            Button(L10n.tr("common.showInFinder")) {
                 NSWorkspace.shared.open(RecordingsLibrary.directoryURL)
             }
         }
@@ -93,7 +93,7 @@ struct FilesListView: View {
 
     private var table: some View {
         Table(sortedRecordings, selection: $selection, sortOrder: $sortOrder) {
-            TableColumn("Name", value: \.name) { entry in
+            TableColumn(L10n.tr("common.name"), value: \.name) { entry in
                 HStack(spacing: 8) {
                     RecordingThumbnailView(path: entry.path, size: Self.thumbSize)
                     nameCell(for: entry)
@@ -102,7 +102,7 @@ struct FilesListView: View {
             .width(min: 200, ideal: 280, max: .infinity)
             .alignment(.leading)
 
-            TableColumn("Duration", value: \.duration) { entry in
+            TableColumn(L10n.tr("files.duration"), value: \.duration) { entry in
                 Text(entry.formattedDuration)
                     .font(Self.bodyFont.monospacedDigit())
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -110,7 +110,7 @@ struct FilesListView: View {
             .width(78)
             .alignment(.leading)
 
-            TableColumn("Size", value: \.size) { entry in
+            TableColumn(L10n.tr("files.size"), value: \.size) { entry in
                 Text(entry.formattedSize)
                     .font(Self.bodyFont)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -118,7 +118,7 @@ struct FilesListView: View {
             .width(64)
             .alignment(.leading)
 
-            TableColumn("Type", value: \.kind) { entry in
+            TableColumn(L10n.tr("files.type"), value: \.kind) { entry in
                 Text(entry.kind.displayName)
                     .font(Self.bodyFont)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -126,7 +126,7 @@ struct FilesListView: View {
             .width(64)
             .alignment(.leading)
 
-            TableColumn("Date", value: \.date) { entry in
+            TableColumn(L10n.tr("files.date"), value: \.date) { entry in
                 Text(entry.formattedDate)
                     .font(Self.bodyFont)
                     .foregroundStyle(.secondary)
@@ -136,21 +136,21 @@ struct FilesListView: View {
             .width(136)
             .alignment(.leading)
 
-            TableColumn("Operation") { entry in
+            TableColumn(L10n.tr("files.operation")) { entry in
                 HStack(spacing: 4) {
                     OperationIconButton(
                         systemName: "eye.circle",
-                        tooltip: "Preview",
+                        tooltip: L10n.tr("common.preview"),
                         action: { quickLook(entry.path) }
                     )
                     OperationIconButton(
                         systemName: "play.circle",
-                        tooltip: "Play",
+                        tooltip: L10n.tr("common.play"),
                         action: { play(entry.path) }
                     )
                     OperationIconButton(
                         systemName: "slider.horizontal.2.square.on.square",
-                        tooltip: "Edit",
+                        tooltip: L10n.tr("common.edit"),
                         action: { appState.showEditor(entry) }
                     )
                 }
@@ -201,22 +201,22 @@ struct FilesListView: View {
 
     @ViewBuilder
     private func entryContextMenu(_ entry: RecordingEntry) -> some View {
-        Button("Preview") { quickLook(entry.path) }
-        Button("Edit") { appState.showEditor(entry) }
+        Button(L10n.tr("common.preview")) { quickLook(entry.path) }
+        Button(L10n.tr("common.edit")) { appState.showEditor(entry) }
         Divider()
-        Button("Play") { play(entry.path) }
-        Button("Convert/Compress") {}
+        Button(L10n.tr("common.play")) { play(entry.path) }
+        Button(L10n.tr("files.convertCompress")) {}
             .disabled(true)
         Divider()
-        Button("Rename") { beginRename(entry) }
-        Button("Show in Finder") { try? RecordingsLibrary.revealInFinder(path: entry.path) }
-        Button("Delete", role: .destructive) { confirmMoveToTrash(entry) }
+        Button(L10n.tr("common.rename")) { beginRename(entry) }
+        Button(L10n.tr("common.showInFinder")) { try? RecordingsLibrary.revealInFinder(path: entry.path) }
+        Button(L10n.tr("common.delete"), role: .destructive) { confirmMoveToTrash(entry) }
     }
 
     @ViewBuilder
     private func nameCell(for entry: RecordingEntry) -> some View {
         if renamingPath == entry.path {
-            TextField("Name", text: $renameDraft)
+            TextField(L10n.tr("common.name"), text: $renameDraft)
                 .font(Self.bodyFont)
                 .textFieldStyle(.plain)
                 .padding(.horizontal, 4)
@@ -332,17 +332,17 @@ struct FilesListView: View {
             }
             Task { await appState.refreshRecordings() }
         } catch {
-            presentError(error, title: "Could not rename recording")
+            presentError(error, title: L10n.tr("files.couldNotRename"))
         }
     }
 
     private func confirmMoveToTrash(_ entry: RecordingEntry) {
         let alert = NSAlert()
-        alert.messageText = "Move to Trash?"
-        alert.informativeText = "“\(entry.name)” will be moved to the Trash."
+        alert.messageText = L10n.tr("files.moveToTrashTitle")
+        alert.informativeText = L10n.tr("files.moveToTrashBody", entry.name)
         alert.alertStyle = .warning
-        alert.addButton(withTitle: "Move to Trash")
-        alert.addButton(withTitle: "Cancel")
+        alert.addButton(withTitle: L10n.tr("files.moveToTrash"))
+        alert.addButton(withTitle: L10n.tr("common.cancel"))
         alert.buttons[0].keyEquivalent = "\r"
         alert.buttons[1].keyEquivalent = "\u{1b}"
         guard alert.runModal() == .alertFirstButtonReturn else { return }
@@ -350,7 +350,7 @@ struct FilesListView: View {
             try RecordingsLibrary.delete(path: entry.path)
             Task { await appState.refreshRecordings() }
         } catch {
-            presentError(error, title: "Could not move recording to Trash")
+            presentError(error, title: L10n.tr("files.couldNotTrash"))
         }
     }
 
@@ -371,7 +371,7 @@ struct FilesListView: View {
         }
     }
 
-    private func presentError(_ error: Error, title: String = "Could not open recording") {
+    private func presentError(_ error: Error, title: String = L10n.tr("files.couldNotOpen")) {
         let alert = NSAlert()
         alert.messageText = title
         alert.informativeText = error.localizedDescription

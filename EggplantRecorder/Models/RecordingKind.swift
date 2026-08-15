@@ -11,9 +11,9 @@ enum RecordingKind: String, Hashable, Comparable {
 
     var displayName: String {
         switch self {
-        case .screen: return "Screen"
-        case .window: return "Window"
-        case .area: return "Area"
+        case .screen: return L10n.tr("kind.screen")
+        case .window: return L10n.tr("kind.window")
+        case .area: return L10n.tr("kind.area")
         }
     }
 
